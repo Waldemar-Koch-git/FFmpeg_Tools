@@ -44,7 +44,7 @@ ffmpeg-sepmerger/
     └── ffprobe.exe (optional, aber empfohlen)
 ```
 	
-💻 Verwendung
+# 💻 Verwendung
 
 1. Starte die Batch-Datei durch Doppelklick auf FFmpegSepMerger.bat
 
@@ -61,7 +61,7 @@ ffmpeg-sepmerger/
 3. Folge den Anweisungen im Menü
 
 
-# Beispiele
+## Beispiele
 
 ### Audio extrahieren:
 
