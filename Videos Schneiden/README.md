@@ -9,9 +9,9 @@ Ein benutzerfreundliches Windows Batch-Script zum präzisen, verlustfreien Schne
 - **Intelligente Zeitberechnung** - Unterstützt HH:MM:SS und MM:SS Zeitformate
 - **Automatische Dateinamen** - Sinnvolle Standard-Ausgabenamen mit Möglichkeit zur Anpassung
 - **Drei Schnitt-Modi**:
-   - Anfang abschneiden (ab Zeitpunkt X behalten)
-   - Mittleren Teil entfernen (Bereich zwischen zwei Zeitpunkten löschen)
-   - Ende abschneiden (bis Zeitpunkt X behalten)
+  - Anfang abschneiden (ab Zeitpunkt X behalten)
+  - Mittleren Teil entfernen (Bereich zwischen zwei Zeitpunkten löschen)
+  - Ende abschneiden (bis Zeitpunkt X behalten)
 
 
 
@@ -31,9 +31,9 @@ Ein benutzerfreundliches Windows Batch-Script zum präzisen, verlustfreien Schne
 
 ### FFmpeg-Executables platzieren:
 
-- Navigiere im entpackten FFmpeg-Ordner zum bin-Verzeichnis
-- Kopiere ffmpeg.exe in den FFmpeg-Unterordner des Projekts
-- Kopiere optional auch ffprobe.exe (für bessere Codec-Erkennung)
+- Navigiere im entpackten FFmpeg-Ordner zum `bin`-Verzeichnis
+- Kopiere `ffmpeg.exe` in den FFmpeg-Unterordner des Projekts
+- Kopiere optional auch `ffprobe.exe` (für bessere Codec-Erkennung)
 
 ```
 FFmpeg-Video-Schnitt/
@@ -50,7 +50,7 @@ FFmpeg-Video-Schnitt/
 
 1. Starte die Batch-Datei durch Doppelklick auf `FFmpeg Video-Schnitt.bat`
 
-2. **ODER** ziehe eine Videodatei direkt ins Terminal
+2. **ODER** ziehe eine Videodatei direkt ins geöffnete Terminal.
 
 ## Menü
 ```
@@ -70,22 +70,22 @@ FFmpeg-Video-Schnitt/
 Szenario: Intro von 1 Minute 41 Sekunden entfernen
 
 1. Wähle Option [1]
-2.  Gib den Dateinamen ein (z.B. meinvideo.mp4) oder nutze Drag & Drop
-3. Eingabe: 00:01:41 (Video startet ab dieser Stelle)
-4. Ausgabe: meinvideo_anfang_geschnitten.mp4
+2.  Gib den Dateinamen ein (z.B. `meinvideo.mp4`) oder nutze Drag & Drop
+3. Eingabe: `00:01:41` (Video startet ab dieser Stelle)
+4. Ausgabe: `meinvideo_anfang_geschnitten.mp4`
 
 ### Mittleren Teil entfernen
 
-**Szenario:** Werbung von 01:41 bis 02:03 entfernen
+**Szenario:** Werbung von `01:41` bis `02:03` entfernen
 
 1. Wähle Option [2]
 2. Gib den Dateinamen ein oder nutze Drag & Drop
-3. Startzeit des zu löschenden Bereichs: 00:01:41
-4. Endzeit des zu löschenden Bereichs: 00:02:03
+3. Startzeit des zu löschenden Bereichs: `00:01:41`
+4. Endzeit des zu löschenden Bereichs: `00:02:03`
 5. Das Video wird in zwei Teile geschnitten und zusammengefügt
-6. Ausgabe: meinvideo_mitte_geschnitten.mkv
+6. Ausgabe: `meinvideo_mitte_geschnitten.mkv`
 
-**Hinweis:** Bei Option [2] werden temporäre .mkv-Dateien verwendet, um Kompatibilitätsprobleme beim Zusammenfügen zu vermeiden.
+**Hinweis:** Bei Option [2] werden temporäre `.mkv`-Dateien verwendet, um Kompatibilitätsprobleme beim Zusammenfügen zu vermeiden.
 
 
 ### Ende abschneiden
@@ -94,8 +94,8 @@ Szenario: Intro von 1 Minute 41 Sekunden entfernen
 
 1. Wähle Option [3]
 2. Gib den Dateinamen ein oder nutze Drag & Drop
-3. Letzte Sekunde, die behalten werden soll: 00:02:03
-4. Ausgabe: meinvideo_ende_geschnitten.mp4
+3. Letzte Sekunde, die behalten werden soll: `00:02:03`
+4. Ausgabe: `meinvideo_ende_geschnitten.mp4`
 
 ## ⏱️ Zeitformate
 
@@ -112,7 +112,7 @@ Das Script akzeptiert folgende Zeitformate:
 ```
 FFmpeg-SepMerger/
 │
-├── FFmpegSepMerger.bat    # Haupt-Script
+├── FFmpegSepMerger.bat     # Haupt-Script
 ├── README.md               # Diese Datei
 └── FFmpeg/                 # FFmpeg-Unterordner
     ├── ffmpeg.exe          # FFmpeg Executable (selbst hinzufügen)
@@ -123,10 +123,10 @@ FFmpeg-SepMerger/
 
 - Encoding: UTF-8 (chcp 65001)
 - Verarbeitungsmethode: Stream-Copy (keine Neucodierung, verlustfrei)
-- Temporäre Dateien: Werden automatisch im %TEMP%-Verzeichnis erstellt und gelöscht
+- Temporäre Dateien: Werden automatisch im `%TEMP%`-Verzeichnis erstellt und gelöscht
 - Ausgabeformat:
   - Option 1 & 3: Behält Original-Containerformat bei
-  - Option 2: Nutzt .mkv für maximale Kompatibilität beim Zusammenfügen
+  - Option 2: Nutzt `.mkv` für maximale Kompatibilität beim Zusammenfügen
 - Fehlerbehandlung: Prüfung auf Dateiexistenz, FFmpeg-Verfügbarkeit und erfolgreiche Ausführung
 
 
@@ -135,8 +135,8 @@ FFmpeg-SepMerger/
 ## Dateipfade
 
 - Relative Pfade: meinvideo.mp4 (Datei im selben Ordner)
-- Absolute Pfade: C:\Users\Name\Videos\meinvideo.mp4
-- Netzwerkpfade: \\Server\Freigabe\video.mp4
+- Absolute Pfade: `C:\Users\Name\Videos\meinvideo.mp4`
+- Netzwerkpfade: `\\Server\Freigabe\video.mp4`
 - Pfade mit Leerzeichen: Werden automatisch behandelt (keine Anführungszeichen nötig)
 
 ## Drag & Drop
@@ -165,39 +165,39 @@ Das Script funktioniert mit allen von FFmpeg unterstützten Videoformaten:
 
 ### "Der Ordner 'FFmpeg' wurde nicht gefunden"
 
-    Erstelle einen Unterordner namens FFmpeg im selben Verzeichnis wie die Batch-Datei
-    Achte auf die korrekte Schreibweise (Groß-/Kleinschreibung spielt bei Windows keine Rolle)
+- Erstelle einen Unterordner namens `FFmpeg` im selben Verzeichnis wie die Batch-Datei
+- Achte auf die korrekte Schreibweise (Groß-/Kleinschreibung spielt bei Windows keine Rolle)
 
 ### "ffmpeg.exe wurde im FFmpeg-Ordner nicht gefunden"
 
-    Stelle sicher, dass ffmpeg.exe im FFmpeg-Unterordner liegt
-    Prüfe den Pfad: [Dein Projektordner]\FFmpeg\ffmpeg.exe
-    Die Fehlermeldung zeigt den erwarteten Pfad an
+- Stelle sicher, dass `ffmpeg.exe` im FFmpeg-Unterordner liegt
+- Prüfe den Pfad: `[Dein Projektordner]\FFmpeg\ffmpeg.exe`
+- Die Fehlermeldung zeigt den erwarteten Pfad an
 
 ### "Datei wurde nicht gefunden"
 
-    Gib den vollständigen Pfad zur Datei an
-    Oder lege die zu verarbeitende Datei in denselben Ordner wie das Script
-    Bei Drag & Drop: Achte darauf, dass die Datei nicht verschoben/gelöscht wurde
+- Gib den vollständigen Pfad zur Datei an
+- Oder lege die zu verarbeitende Datei in denselben Ordner wie das Script
+- Bei Drag & Drop: Achte darauf, dass die Datei nicht verschoben/gelöscht wurde
 
 ### "Beim Schneiden ist ein Fehler aufgetreten"
 
-    Prüfe, ob die Zeitangabe korrekt ist (nicht länger als das Video)
-    Stelle sicher, dass genügend Speicherplatz vorhanden ist
-    Bei Option [2]: Überprüfe, ob die Endzeit nach der Startzeit liegt
-    Prüfe, ob die Ausgabedatei nicht bereits geöffnet ist
+- Prüfe, ob die Zeitangabe korrekt ist (nicht länger als das Video)
+- Stelle sicher, dass genügend Speicherplatz vorhanden ist
+- Bei Option [2]: Überprüfe, ob die Endzeit nach der Startzeit liegt
+- Prüfe, ob die Ausgabedatei nicht bereits geöffnet ist
 
 ### "FFprobe nicht gefunden - verwende Basis-Funktionen"
 
-    Dies ist nur eine Info, keine Fehlermeldung
-    Das Script funktioniert auch ohne ffprobe.exe
-    Für erweiterte Funktionen: Kopiere ffprobe.exe in den FFmpeg-Ordner
+- Dies ist nur eine Info, keine Fehlermeldung
+- Das Script funktioniert auch ohne `ffprobe.exe`
+- Für erweiterte Funktionen: Kopiere `ffprobe.exe` in den `FFmpeg`-Ordner
 
 ### Zusammenfügen schlägt fehl (Option 2)
 
-    Manche Containerformate (z.B. MP4) unterstützen das Concat-Demuxing nicht perfekt
-    Das Script nutzt .mkv als Zwischenformat für maximale Kompatibilität
-    Falls Probleme auftreten: Nutze die Optionen [1] und [3] separat
+- Manche Containerformate (z.B. MP4) unterstützen das Concat-Demuxing nicht perfekt
+- Das Script nutzt `.mkv` als Zwischenformat für maximale Kompatibilität
+- Falls Probleme auftreten: Nutze die Optionen [1] und [3] separat
 
 # 💡 Tipps
 
