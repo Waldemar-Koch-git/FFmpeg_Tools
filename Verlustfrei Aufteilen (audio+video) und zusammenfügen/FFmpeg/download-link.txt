@@ -1,0 +1,5 @@
+(https://ffmpeg.org/) →  https://www.gyan.dev/ffmpeg/builds/
+Direkt: https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.7z
+
+→ ffmpeg.exe
+→ ffprobe.exe
