@@ -1,6 +1,7 @@
 @echo off
 title FFmpeg Multi-Tool
 chcp 65001 >nul
+setlocal EnableDelayedExpansion
 
 :: ============================================================================
 ::  FFmpeg Multi-Tool
@@ -104,7 +105,7 @@ echo Schneide Anfang ab...
 echo ^(Hinweis: Stream-Copy schneidet am naechsten Keyframe, kleine
 echo  Abweichungen vom exakten Zeitstempel sind moeglich^)
 "%FFMPEG%" -y -ss %start% -i "%INPUT_FILE%" -c copy "%OUTPUT_FILE%"
-call :ReportResult "Beim Schneiden ist ein Fehler aufgetreten!" "Fertig! Datei gespeichert als: %OUTPUT_FILE%"
+call :ReportResult "Beim Schneiden ist ein Fehler aufgetreten" "Fertig! Datei gespeichert als: !OUTPUT_FILE!"
 pause
 goto MENU_SCHNITT
 
@@ -161,7 +162,7 @@ echo [3/4] Erstelle Verkettungsliste...
 
 echo [4/4] Fuege Teile zusammen...
 "%FFMPEG%" -y -f concat -safe 0 -i "%TMPLIST%" -c copy "%OUTPUT_FILE%"
-call :ReportResult "Beim Zusammenfuegen ist ein Fehler aufgetreten!" "Fertig! Datei gespeichert als: %OUTPUT_FILE%"
+call :ReportResult "Beim Zusammenfuegen ist ein Fehler aufgetreten" "Fertig! Datei gespeichert als: !OUTPUT_FILE!"
 
 del "%TMP1%" 2>nul
 del "%TMP2%" 2>nul
@@ -192,7 +193,7 @@ if "%OVERWRITE_OK%"=="0" (
 echo.
 echo Schneide Ende ab...
 "%FFMPEG%" -y -i "%INPUT_FILE%" -t %end% -c copy "%OUTPUT_FILE%"
-call :ReportResult "Beim Schneiden ist ein Fehler aufgetreten!" "Fertig! Datei gespeichert als: %OUTPUT_FILE%"
+call :ReportResult "Beim Schneiden ist ein Fehler aufgetreten" "Fertig! Datei gespeichert als: !OUTPUT_FILE!"
 pause
 goto MENU_SCHNITT
 
@@ -293,16 +294,16 @@ set "video_ow=%OVERWRITE_OK%"
 echo.
 if "%audio_ow%"=="1" (
     echo Exportiere Audio...
-    "%FFMPEG%" -y -i "%INPUT_FILE%" -vn -c copy "%AUDIO_OUT%"
-    call :ReportResult "Beim Audio-Export ist ein Fehler aufgetreten!" "Audio exportiert: %AUDIO_OUT%"
+    "%FFMPEG%" -y -i "!INPUT_FILE!" -vn -c copy "!AUDIO_OUT!"
+    call :ReportResult "Beim Audio-Export ist ein Fehler aufgetreten" "Audio exportiert: !AUDIO_OUT!"
 ) else (
     echo Audio-Export uebersprungen.
 )
 
 if "%video_ow%"=="1" (
     echo Exportiere Video...
-    "%FFMPEG%" -y -i "%INPUT_FILE%" -an -c copy "%VIDEO_OUT%"
-    call :ReportResult "Beim Video-Export ist ein Fehler aufgetreten!" "Video exportiert: %VIDEO_OUT%"
+    "%FFMPEG%" -y -i "!INPUT_FILE!" -an -c copy "!VIDEO_OUT!"
+    call :ReportResult "Beim Video-Export ist ein Fehler aufgetreten" "Video exportiert: !VIDEO_OUT!"
 ) else (
     echo Video-Export uebersprungen.
 )
@@ -424,14 +425,14 @@ echo.
 
 "%FFMPEG%" -y -i "%video%" -i "%audio%" -c:v copy %MP3_PARAMS% -map 0:v:0 -map 1:a:0 "%OUTPUT_FILE%"
 echo.
-call :ReportResult "Beim Muxen ist ein Fehler aufgetreten!" "Erfolgreich abgeschlossen!"
+call :ReportResult "Beim Muxen ist ein Fehler aufgetreten" "Erfolgreich abgeschlossen!"
 if errorlevel 1 (
     echo Moegliche Ursachen:
     echo  - Video- und Audiolaenge unterscheiden sich stark
     echo  - Beschaedigte Eingabedateien
     echo  - Unzureichender Speicherplatz
 ) else (
-    echo Ausgabedatei: %OUTPUT_FILE%
+    echo Ausgabedatei: !OUTPUT_FILE!
     echo Audio-Format: MP3 ^(%MP3_INFO%^)
     echo Video-Format: unveraendert ^(verlustfrei kopiert^)
 )
@@ -520,7 +521,7 @@ if "%OVERWRITE_OK%"=="0" (
 echo.
 echo Rotiere Video (Metadaten, verlustfrei)...
 "%FFMPEG%" -y -i "%INPUT_FILE%" -c copy -metadata:s:v:0 rotate=%rotation% "%OUTPUT_FILE%"
-call :ReportResult "Beim Rotieren ist ein Fehler aufgetreten!" "Video rotiert! Ausgabe: %OUTPUT_FILE%"
+call :ReportResult "Beim Rotieren ist ein Fehler aufgetreten" "Video rotiert! Ausgabe: !OUTPUT_FILE!"
 if not errorlevel 1 (
     echo HINWEIS: Aendert nur Metadaten. Falls im Player nicht sichtbar,
     echo nutze stattdessen die Pixel-Rotation.
@@ -547,7 +548,7 @@ echo Rotiere Video (Re-Encoding, CRF 0 = verlustfrei)...
 echo Dies kann je nach Videolaenge einige Zeit dauern...
 echo.
 "%FFMPEG%" -y -i "%INPUT_FILE%" -vf "%filter%" -c:v libx264 -preset veryslow -crf 0 -c:a copy "%OUTPUT_FILE%"
-call :ReportResult "Beim Rotieren ist ein Fehler aufgetreten!" "Video rotiert! Ausgabe: %OUTPUT_FILE%"
+call :ReportResult "Beim Rotieren ist ein Fehler aufgetreten" "Video rotiert! Ausgabe: !OUTPUT_FILE!"
 if not errorlevel 1 (
     echo Einstellungen: CRF 0, Preset veryslow, Audio verlustfrei kopiert.
 )
@@ -584,7 +585,7 @@ echo.
 echo Konvertierung laeuft (%MP3_INFO%)...
 "%FFMPEG%" -y -i "%INPUT_FILE%" %MP3_PARAMS% -vn "%OUTPUT_FILE%"
 echo.
-call :ReportResult "Bei der Konvertierung ist ein Fehler aufgetreten!" "Fertig! Datei gespeichert als: %OUTPUT_FILE%"
+call :ReportResult "Bei der Konvertierung ist ein Fehler aufgetreten" "Fertig! Datei gespeichert als: !OUTPUT_FILE!"
 pause
 goto MAIN_MENU
 
@@ -603,7 +604,7 @@ if not exist "%FFMPEG_DIR%" (
 )
 if not exist "%FFMPEG%" (
     echo [FEHLER] ffmpeg.exe wurde im Ordner "FFmpeg" nicht gefunden!
-    echo Erwarteter Pfad: %FFMPEG%
+    echo Erwarteter Pfad: !FFMPEG!
     echo.
     pause
     exit /b 1
@@ -626,8 +627,8 @@ set "_label=%~1"
 if "%_label%"=="" set "_label=Datei"
 set "INPUT_FILE="
 if defined dropped_file (
-    set "INPUT_FILE=%dropped_file%"
-    echo Verwende per Drag ^& Drop uebergebene Datei als %_label%: %dropped_file%
+    set "INPUT_FILE=!dropped_file!"
+    echo Verwende per Drag ^& Drop uebergebene Datei als %_label%: !dropped_file!
     set "dropped_file="
 ) else (
     echo Tipp: %_label% per Drag ^& Drop in dieses Fenster ziehen und Enter druecken,
@@ -637,7 +638,7 @@ if defined dropped_file (
 set "INPUT_FILE=%INPUT_FILE:"=%"
 if not exist "%INPUT_FILE%" (
     echo.
-    echo [FEHLER] Datei "%INPUT_FILE%" wurde nicht gefunden!
+    echo [FEHLER] Datei "!INPUT_FILE!" wurde nicht gefunden!
     set "INPUT_OK=0"
     exit /b 1
 )
@@ -667,8 +668,8 @@ if not "%custom_output%"=="" set "OUTPUT_FILE=%custom_output%"
 for %%A in ("%OUTPUT_FILE%") do set "_out_dir=%%~dpA"
 if not exist "%_out_dir%" (
     echo.
-    echo [FEHLER] Zielverzeichnis "%_out_dir%" existiert nicht!
-    set "OUTPUT_FILE=%_default_output%"
+    echo [FEHLER] Zielverzeichnis "!_out_dir!" existiert nicht!
+    set "OUTPUT_FILE=!_default_output!"
     goto AskCustomOutput_Retry
 )
 exit /b 0
