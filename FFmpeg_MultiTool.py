@@ -107,9 +107,18 @@ def header(title: str) -> None:
 def ask(prompt: str) -> str:
     try:
         return input(prompt)
-    except (EOFError, KeyboardInterrupt):
+    except EOFError:
         print()
         sys.exit(0)
+    # KeyboardInterrupt (Strg+C) wird bewusst NICHT hier abgefangen,
+    # sondern nach oben durchgereicht: die jeweilige Menue-Schleife faengt
+    # sie ab und kehrt zum Menue zurueck, statt das ganze Programm zu
+    # beenden (siehe run_menu_loop / main_menu / menu_*).
+
+
+def interrupted() -> None:
+    """Einheitliche Meldung, wenn eine Aktion per Strg+C abgebrochen wurde."""
+    print("\n\n[ABBRUCH] Vorgang mit Strg+C abgebrochen - zurueck zum Menue.")
 
 
 # ---------------------------------------------------------------------------
@@ -184,14 +193,27 @@ def get_file_info(path: Path) -> tuple[Path, str, str]:
 
 def ask_custom_output(default_output: Path) -> Path | None:
     """Schlaegt einen Standard-Ausgabepfad vor und erlaubt einen eigenen
-    Namen. Prueft, dass das Zielverzeichnis existiert."""
+    Namen. Prueft, dass das Zielverzeichnis existiert.
+
+    Wird nur ein blanker Dateiname ohne Pfad eingegeben (z.B. "neu.mp4"),
+    wird dieser im selben Ordner wie der Standard-Vorschlag gespeichert -
+    NICHT im aktuellen Arbeitsverzeichnis des Programms. Das verhindert
+    "Permission denied"-Fehler, wenn das Programm z.B. aus einem
+    schreibgeschuetzten Ordner (Programme, System32 o.ae.) gestartet wurde.
+    """
     output = default_output
     while True:
         print()
         print(f"Ausgabedatei: {output}")
         custom = ask("Anderen Dateinamen verwenden? (Enter fuer Standard): ").strip().strip('"')
         if custom:
-            output = Path(custom)
+            custom_path = Path(custom)
+            if custom_path.is_absolute() or len(custom_path.parts) > 1:
+                output = custom_path
+            else:
+                # Nur ein Dateiname ohne Verzeichnisanteil -> gleicher Ordner
+                # wie der Standard-Ausgabevorschlag (nicht das cwd!).
+                output = default_output.parent / custom_path
 
         if not output.parent.is_dir():
             print()
@@ -331,21 +353,24 @@ def menu_schnitt() -> None:
         print("  [1] Anfang abschneiden")
         print("  [2] Mittleren Teil herausschneiden")
         print("  [3] Ende abschneiden (nur Anfangsteil behalten)")
-        print("  [4] Zurueck zum Hauptmenue")
+        print("  [0] Zurueck zum Hauptmenue")
         print()
-        choice = ask("Deine Auswahl: ").strip()
+        try:
+            choice = ask("Deine Auswahl: ").strip()
 
-        if choice == "1":
-            schnitt_anfang()
-        elif choice == "2":
-            schnitt_mitte()
-        elif choice == "3":
-            schnitt_ende()
-        elif choice == "4":
-            return
-        else:
-            print("Ungueltige Auswahl!")
-            pause()
+            if choice == "1":
+                schnitt_anfang()
+            elif choice == "2":
+                schnitt_mitte()
+            elif choice == "3":
+                schnitt_ende()
+            elif choice == "0":
+                return
+            else:
+                print("Ungueltige Auswahl!")
+                pause()
+        except KeyboardInterrupt:
+            interrupted()
 
 
 def schnitt_anfang() -> None:
@@ -459,7 +484,156 @@ def schnitt_ende() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 2) AUDIO / VIDEO TRENNEN
+# 2) VIDEO ZUSAMMENSETZEN (MERGE / CONCAT)
+# ---------------------------------------------------------------------------
+
+def merge_collect_files() -> list[Path] | None:
+    """Fragt nacheinander Videodateien ab (mind. 2), leere Eingabe beendet
+    die Sammlung. Gibt None zurueck, wenn abgebrochen wird."""
+    files: list[Path] = []
+
+    first = get_input_file("1. Videodatei")
+    if first is None:
+        return None
+    files.append(first)
+
+    print()
+    print("Weitere Videodatei hinzufuegen (Reihenfolge = Ausgabereihenfolge).")
+    print("Leere Eingabe druecken, wenn alle Dateien hinzugefuegt wurden.")
+    print()
+
+    while True:
+        raw = ask(f"{len(files) + 1}. Videodatei (leer = fertig): ").strip().strip('"')
+        if not raw:
+            break
+        path = Path(raw)
+        if not path.is_file():
+            print(f'[FEHLER] Datei "{raw}" wurde nicht gefunden!')
+            continue
+        files.append(path)
+        print(f"  -> hinzugefuegt: {path.name}")
+
+    if len(files) < 2:
+        print()
+        print("[FEHLER] Es werden mindestens 2 Videodateien benoetigt!")
+        return None
+
+    return files
+
+
+def menu_merge() -> None:
+    while True:
+        header("Videos zusammensetzen (Merge)")
+        print("Fuegt mehrere Videodateien in der angegebenen Reihenfolge")
+        print("zu einer einzigen Datei zusammen.")
+        print()
+        print("  [1] Schnell (Stream-Copy, verlustfrei)")
+        print("      - erfordert identische Codecs/Aufloesung/Format")
+        print("  [2] Kompatibel (Re-Encoding)")
+        print("      - funktioniert auch bei unterschiedlichen Quelldateien")
+        print("  [0] Zurueck zum Hauptmenue")
+        print()
+        try:
+            choice = ask("Waehle Methode: ").strip()
+
+            if choice == "1":
+                merge_concat_copy()
+            elif choice == "2":
+                merge_concat_reencode()
+            elif choice == "0":
+                return
+            else:
+                print("Ungueltige Auswahl!")
+                pause()
+        except KeyboardInterrupt:
+            interrupted()
+
+
+def merge_concat_copy() -> None:
+    clear()
+    files = merge_collect_files()
+    if files is None:
+        pause()
+        return
+
+    dir_, basename, ext = get_file_info(files[0])
+    output = ask_custom_output(dir_ / f"{basename}_zusammengesetzt{ext}")
+    if not check_overwrite(output):
+        print("Abgebrochen.")
+        pause()
+        return
+
+    tmp_dir = Path(tempfile.gettempdir())
+    uid = uuid.uuid4().hex[:10]
+    tmplist = tmp_dir / f"ffmpegmt_{uid}_filelist.txt"
+
+    with open(tmplist, "w", encoding="utf-8") as f:
+        for path in files:
+            escaped = str(path.resolve()).replace("'", "'\\''")
+            f.write(f"file '{escaped}'\n")
+
+    print()
+    print(f"Fuege {len(files)} Videos zusammen (Stream-Copy, verlustfrei)...")
+    rc = run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(tmplist), "-c", "copy", str(output)])
+    print()
+    ok = report_result(rc, "Beim Zusammensetzen ist ein Fehler aufgetreten",
+                        f"Fertig! Datei gespeichert als: {output}")
+    if not ok:
+        print("Moegliche Ursachen (siehe FFmpeg-Ausgabe oben fuer Details):")
+        print(" - Die Videos haben unterschiedliche Codecs, Aufloesungen")
+        print("   oder Formate -> nutze die Methode [2] Kompatibel (Re-Encoding)")
+        print(" - Zielordner nicht beschreibbar -> anderen Pfad waehlen")
+
+    tmplist.unlink(missing_ok=True)
+    pause()
+
+
+def merge_concat_reencode() -> None:
+    clear()
+    files = merge_collect_files()
+    if files is None:
+        pause()
+        return
+
+    dir_, basename, _ext = get_file_info(files[0])
+    output = ask_custom_output(dir_ / f"{basename}_zusammengesetzt.mp4")
+    if not check_overwrite(output):
+        print("Abgebrochen.")
+        pause()
+        return
+
+    args: list[str] = []
+    for path in files:
+        args += ["-i", str(path)]
+
+    filter_parts = "".join(f"[{i}:v:0][{i}:a:0]" for i in range(len(files)))
+    filter_complex = f"{filter_parts}concat=n={len(files)}:v=1:a=1[outv][outa]"
+
+    print()
+    print(f"Fuege {len(files)} Videos zusammen (Re-Encoding)...")
+    print("Dies kann je nach Anzahl und Laenge der Videos einige Zeit dauern...")
+    print()
+    rc = run_ffmpeg([
+        *args, "-filter_complex", filter_complex,
+        "-map", "[outv]", "-map", "[outa]",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-c:a", "aac", "-b:a", "192k", str(output),
+    ])
+    print()
+    ok = report_result(rc, "Beim Zusammensetzen ist ein Fehler aufgetreten",
+                        f"Fertig! Datei gespeichert als: {output}")
+    if not ok:
+        print("Moegliche Ursachen (siehe FFmpeg-Ausgabe oben fuer Details):")
+        print(" - Zielordner nicht beschreibbar (z.B. Programm laeuft in")
+        print("   einem schreibgeschuetzten Verzeichnis) -> anderen Pfad waehlen")
+        print(" - Eine der Videodateien enthaelt keinen Audio-Stream")
+        print("   (alle Eingabedateien benoetigen Bild UND Ton)")
+        print(" - Beschaedigte Eingabedatei oder unzureichender Speicherplatz")
+    pause()
+
+
+# ---------------------------------------------------------------------------
+# 3) AUDIO / VIDEO TRENNEN
 # ---------------------------------------------------------------------------
 
 def menu_trennen() -> None:
@@ -468,21 +642,24 @@ def menu_trennen() -> None:
         print("  [1] Nur Audio exportieren (verlustfrei)")
         print("  [2] Nur Video exportieren (verlustfrei, ohne Ton)")
         print("  [3] Beides gleichzeitig exportieren")
-        print("  [4] Zurueck zum Hauptmenue")
+        print("  [0] Zurueck zum Hauptmenue")
         print()
-        choice = ask("Deine Auswahl: ").strip()
+        try:
+            choice = ask("Deine Auswahl: ").strip()
 
-        if choice == "1":
-            trennen_audio()
-        elif choice == "2":
-            trennen_video()
-        elif choice == "3":
-            trennen_beide()
-        elif choice == "4":
-            return
-        else:
-            print("Ungueltige Auswahl!")
-            pause()
+            if choice == "1":
+                trennen_audio()
+            elif choice == "2":
+                trennen_video()
+            elif choice == "3":
+                trennen_beide()
+            elif choice == "0":
+                return
+            else:
+                print("Ungueltige Auswahl!")
+                pause()
+        except KeyboardInterrupt:
+            interrupted()
 
 
 def trennen_audio() -> None:
@@ -565,7 +742,7 @@ def trennen_beide() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 3) MUXEN (AUDIO + VIDEO ZUSAMMENFUEGEN)
+# 4) MUXEN (AUDIO + VIDEO ZUSAMMENFUEGEN)
 # ---------------------------------------------------------------------------
 
 def menu_mux() -> None:
@@ -573,19 +750,22 @@ def menu_mux() -> None:
         header("Audio + Video zusammenfuegen (Muxen)")
         print("  [1] Audio unveraendert uebernehmen (verlustfrei)")
         print("  [2] Audio dabei zu MP3 konvertieren (z.B. bei WAV)")
-        print("  [3] Zurueck zum Hauptmenue")
+        print("  [0] Zurueck zum Hauptmenue")
         print()
-        choice = ask("Deine Auswahl: ").strip()
+        try:
+            choice = ask("Deine Auswahl: ").strip()
 
-        if choice == "1":
-            mux_copy()
-        elif choice == "2":
-            mux_mp3()
-        elif choice == "3":
-            return
-        else:
-            print("Ungueltige Auswahl!")
-            pause()
+            if choice == "1":
+                mux_copy()
+            elif choice == "2":
+                mux_mp3()
+            elif choice == "0":
+                return
+            else:
+                print("Ungueltige Auswahl!")
+                pause()
+        except KeyboardInterrupt:
+            interrupted()
 
 
 def mux_copy() -> None:
@@ -678,7 +858,7 @@ def mux_mp3() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4) VIDEO ROTIEREN
+# 5) VIDEO ROTIEREN
 # ---------------------------------------------------------------------------
 
 def menu_rotate() -> None:
@@ -696,25 +876,28 @@ def menu_rotate() -> None:
         print("  [1] 90 Grad im Uhrzeigersinn")
         print("  [2] 180 Grad drehen")
         print("  [3] 270 Grad im Uhrzeigersinn (90 Grad gegen den UZS)")
-        print("  [4] Zurueck zum Hauptmenue")
+        print("  [0] Zurueck zum Hauptmenue")
         print()
-        choice = ask("Waehle Rotation: ").strip()
+        try:
+            choice = ask("Waehle Rotation: ").strip()
 
-        if choice == "1":
-            rotation, suffix = "90", "_rot90"
-        elif choice == "2":
-            rotation, suffix = "180", "_rot180"
-        elif choice == "3":
-            rotation, suffix = "270", "_rot270"
-        elif choice == "4":
-            return
-        else:
-            print("Ungueltige Auswahl!")
-            pause()
-            continue
+            if choice == "1":
+                rotation, suffix = "90", "_rot90"
+            elif choice == "2":
+                rotation, suffix = "180", "_rot180"
+            elif choice == "3":
+                rotation, suffix = "270", "_rot270"
+            elif choice == "0":
+                return
+            else:
+                print("Ungueltige Auswahl!")
+                pause()
+                continue
 
-        if rotate_method_menu(path, dir_, basename, ext, rotation, suffix):
-            return  # zurueck zum Hauptmenue nach Erfolg/Ende
+            if rotate_method_menu(path, dir_, basename, ext, rotation, suffix):
+                return  # zurueck zum Hauptmenue nach Erfolg/Ende
+        except KeyboardInterrupt:
+            interrupted()
 
 
 def rotate_method_menu(path: Path, dir_: Path, basename: str, ext: str,
@@ -725,18 +908,21 @@ def rotate_method_menu(path: Path, dir_: Path, basename: str, ext: str,
         print("      - keine Re-Encodierung, funktioniert in den meisten Playern")
         print("  [2] Pixel-Rotation (Re-Encoding, CRF 0 = verlustfrei)")
         print("      - dauert laenger, funktioniert in allen Playern/Editoren")
-        print("  [3] Zurueck")
+        print("  [0] Zurueck")
         print()
-        method = ask("Waehle Methode: ").strip()
+        try:
+            method = ask("Waehle Methode: ").strip()
 
-        if method == "1":
-            return rotate_metadata(path, dir_, basename, suffix, rotation)
-        if method == "2":
-            return rotate_reencode(path, dir_, basename, suffix, rotation)
-        if method == "3":
-            return False
-        print("Ungueltige Auswahl!")
-        pause()
+            if method == "1":
+                return rotate_metadata(path, dir_, basename, suffix, rotation)
+            if method == "2":
+                return rotate_reencode(path, dir_, basename, suffix, rotation)
+            if method == "0":
+                return False
+            print("Ungueltige Auswahl!")
+            pause()
+        except KeyboardInterrupt:
+            interrupted()
 
 
 def rotate_metadata(path: Path, dir_: Path, basename: str, suffix: str, rotation: str) -> bool:
@@ -788,7 +974,7 @@ def rotate_reencode(path: Path, dir_: Path, basename: str, suffix: str, rotation
 
 
 # ---------------------------------------------------------------------------
-# 5) AUDIO IN MP3 KONVERTIEREN
+# 6) AUDIO IN MP3 KONVERTIEREN
 # ---------------------------------------------------------------------------
 
 def menu_convert() -> None:
@@ -827,32 +1013,38 @@ def main_menu() -> None:
     while True:
         header("FFmpeg Multi-Tool")
         print("  [1] Video schneiden        (Anfang / Mitte / Ende)")
-        print("  [2] Audio / Video trennen  (exportieren, verlustfrei)")
-        print("  [3] Audio + Video muxen    (zusammenfuegen)")
-        print("  [4] Video rotieren")
-        print("  [5] Audio in MP3 konvertieren")
-        print("  [6] Beenden")
+        print("  [2] Video zusammensetzen   (mehrere Videos mergen)")
+        print("  [3] Audio / Video trennen  (exportieren, verlustfrei)")
+        print("  [4] Audio + Video muxen    (zusammenfuegen)")
+        print("  [5] Video rotieren")
+        print("  [6] Audio in MP3 konvertieren")
+        print("  [0] Beenden")
         print()
         if _dropped_file:
             print(f"  Aktive Datei (Drag & Drop): {_dropped_file}")
             print()
-        choice = ask("Deine Auswahl: ").strip()
+        try:
+            choice = ask("Deine Auswahl: ").strip()
 
-        if choice == "1":
-            menu_schnitt()
-        elif choice == "2":
-            menu_trennen()
-        elif choice == "3":
-            menu_mux()
-        elif choice == "4":
-            menu_rotate()
-        elif choice == "5":
-            menu_convert()
-        elif choice == "6":
-            sys.exit(0)
-        else:
-            print("Ungueltige Auswahl!")
-            pause()
+            if choice == "1":
+                menu_schnitt()
+            elif choice == "2":
+                menu_merge()
+            elif choice == "3":
+                menu_trennen()
+            elif choice == "4":
+                menu_mux()
+            elif choice == "5":
+                menu_rotate()
+            elif choice == "6":
+                menu_convert()
+            elif choice == "0":
+                sys.exit(0)
+            else:
+                print("Ungueltige Auswahl!")
+                pause()
+        except KeyboardInterrupt:
+            interrupted()
 
 
 def main() -> None:
@@ -872,4 +1064,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\nProgramm mit Strg+C beendet.")
+        sys.exit(0)
