@@ -57,14 +57,18 @@ Im Hauptmenü stehen folgende Funktionen zur Verfügung:
 | 3 | Audio und Video trennen (verlustfrei) |
 | 4 | Audio und Video zusammenfügen (Muxen) |
 | 5 | Video rotieren (Metadaten oder Re-Encoding) |
-| 6 | Audio in MP3 konvertieren |
+| 6 | Audio konvertieren (MP3, AAC, Opus, Vorbis, FLAC, WAV) |
 | 0 | Zurück / Beenden |
 
 `0` ist in allen Menüs und Untermenüs einheitlich der Punkt für
 „Zurück“ bzw. „Beenden“.
 
 Alle Funktionen unterstützen Drag & Drop für Eingabedateien und fragen vor
-dem Überschreiben vorhandener Ausgabedateien nach.
+dem Überschreiben vorhandener Ausgabedateien nach. Soll eine Datei nicht
+überschrieben werden, kann direkt ein alternativer Dateiname eingegeben
+werden – bei „Audio und Video gleichzeitig trennen“ (Option 3) gilt das
+für Audio- und Video-Export unabhängig voneinander; leere Eingabe
+überspringt den jeweiligen Export bewusst.
 
 ### Videos zusammensetzen (Option 2)
 
@@ -78,11 +82,38 @@ Methoden stehen zur Wahl:
   Quelldateien, dauert aber länger, da neu codiert wird (H.264 CRF 18,
   AAC 192 kbps). Alle Eingabedateien benötigen dabei Bild **und** Ton.
 
+### Audio konvertieren (Option 6)
+
+Unterstützte Zielformate: MP3, AAC/M4A, Opus, Vorbis/OGG (jeweils mit
+auswählbarer Bitrate/Qualitätsstufe oder eigener Bitrate), FLAC (mit
+wählbarem Kompressionslevel 0–8, Standard 5) und WAV (16-bit oder 24-bit
+PCM).
+
+- **Cover-Art bleibt erhalten:** Ein eingebettetes Album-Cover wird beim
+  Konvertieren automatisch als Bildanhang übernommen (gilt nicht für WAV,
+  das keine Bildanhänge unterstützt). Ist kein Cover vorhanden oder lässt
+  es sich nicht übernehmen, wird automatisch ohne Cover weiterkonvertiert.
+- **Passt die Dateiendung nicht zum gewählten Format** (z. B. eigener
+  Dateiname `song.mp3` bei zuvor gewähltem FLAC), warnt das Programm und
+  bietet an, die Endung automatisch zu korrigieren.
+- Fehlt der für das gewählte Format nötige Encoder in der installierten
+  FFmpeg-Version (z. B. `libopus`), wird das vorab gemeldet, statt erst
+  beim Ausführen mit einer FFmpeg-Fehlermeldung zu scheitern.
+
+### Muxen (Option 4)
+
+Beim Zusammenfügen von Video- und Audiodatei kann das Audio wahlweise
+unverändert übernommen oder – z. B. bei WAV-Audio, das nicht direkt in
+MP4 passt – nach MP3, AAC oder Opus konvertiert werden.
+
 ## Hinweise
 
 - Verlustfreie Schnitte (Stream-Copy) sind an Keyframes ausgerichtet;
   geringe Abweichungen vom exakten Zeitstempel sind möglich.
-- Zeitangaben im Format `HH:MM:SS` oder in Sekunden (z. B. `95.5`).
+- Zeitangaben im Format `HH:MM:SS` oder in Sekunden (z. B. `95.5`). Beim
+  Herausschneiden eines mittleren Bereichs (Option 1 → „Mittleren Teil
+  herausschneiden“) muss die Endzeit nach der Startzeit liegen, das
+  Programm prüft das direkt bei der Eingabe.
 - Bei Fehlern liefert die Konsolenausgabe den ffmpeg-Fehlertext.
 - Wird bei einem eigenen Ausgabedateinamen nur ein Dateiname ohne Pfad
   angegeben (z. B. `neu.mp4`), landet die Datei automatisch im selben
