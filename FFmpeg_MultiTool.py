@@ -14,14 +14,15 @@ gesucht (in dieser Reihenfolge):
      "sudo apt install ffmpeg" unter Linux oder "brew install ffmpeg"
      unter macOS).
 
-Vorteil gegenueber der Batch-Version: Dateinamen mit Klammern, "&", "%%",
+Vorteil gegenüber der Batch-Version: Dateinamen mit Klammern, "&", "%%",
 Umlauten etc. funktionieren hier ganz normal, weil Python Pfade als echte
-Strings behandelt und FFmpeg-Argumente als Liste uebergibt (kein
+Strings behandelt und FFmpeg-Argumente als Liste übergibt (kein
 Shell-Parsing, kein Quoting-Aerger).
 """
 
 from __future__ import annotations
 
+import functools
 import os
 import re
 import shutil
@@ -43,8 +44,8 @@ _EXE_SUFFIX = ".exe" if os.name == "nt" else ""
 
 def _resolve_binary(name: str) -> Path:
     """Sucht ein FFmpeg-Binary zuerst im lokalen FFmpeg-Ordner, danach im
-    System-PATH. Gibt den lokalen Pfad zurueck, falls gar nichts gefunden
-    wird (fuer eine aussagekraeftige Fehlermeldung in check_ffmpeg)."""
+    System-PATH. Gibt den lokalen Pfad zurück, falls gar nichts gefunden
+    wird (für eine aussagekräftige Fehlermeldung in check_ffmpeg)."""
     local = FFMPEG_DIR / f"{name}{_EXE_SUFFIX}"
     if local.is_file():
         return local
@@ -97,20 +98,20 @@ OPUS_BITRATES = {
 }
 
 VORBIS_BITRATES = {
-    "1": (["-c:a", "libvorbis", "-q:a", "3"], "~112 kbps (Qualitaet 3)"),
-    "2": (["-c:a", "libvorbis", "-q:a", "5"], "~160 kbps (Qualitaet 5, Standard)"),
-    "3": (["-c:a", "libvorbis", "-q:a", "7"], "~224 kbps (Qualitaet 7)"),
-    "4": (["-c:a", "libvorbis", "-q:a", "9"], "~320 kbps (Qualitaet 9, maximal)"),
+    "1": (["-c:a", "libvorbis", "-q:a", "3"], "~112 kbps (Qualität 3)"),
+    "2": (["-c:a", "libvorbis", "-q:a", "5"], "~160 kbps (Qualität 5, Standard)"),
+    "3": (["-c:a", "libvorbis", "-q:a", "7"], "~224 kbps (Qualität 7)"),
+    "4": (["-c:a", "libvorbis", "-q:a", "9"], "~320 kbps (Qualität 9, maximal)"),
 }
 
 TIME_RE = re.compile(r"^[0-9:.]+$")
 
-# Wird beim Start ggf. mit einer per Drag & Drop uebergebenen Datei belegt
+# Wird beim Start ggf. mit einer per Drag & Drop übergebenen Datei belegt
 _dropped_file: str | None = None
 
 
 # ---------------------------------------------------------------------------
-# Kleine Hilfsfunktionen fuer die Konsole
+# Kleine Hilfsfunktionen für die Konsole
 # ---------------------------------------------------------------------------
 
 def clear() -> None:
@@ -136,14 +137,14 @@ def ask(prompt: str) -> str:
         print()
         sys.exit(0)
     # KeyboardInterrupt (Strg+C) wird bewusst NICHT hier abgefangen,
-    # sondern nach oben durchgereicht: die jeweilige Menue-Schleife faengt
-    # sie ab und kehrt zum Menue zurueck, statt das ganze Programm zu
+    # sondern nach oben durchgereicht: die jeweilige Menü-Schleife fängt
+    # sie ab und kehrt zum Menü zurück, statt das ganze Programm zu
     # beenden (siehe run_menu_loop / main_menu / menu_*).
 
 
 def interrupted() -> None:
     """Einheitliche Meldung, wenn eine Aktion per Strg+C abgebrochen wurde."""
-    print("\n\n[ABBRUCH] Vorgang mit Strg+C abgebrochen - zurueck zum Menue.")
+    print("\n\n[ABBRUCH] Vorgang mit Strg+C abgebrochen - zurück zum Menü.")
 
 
 # ---------------------------------------------------------------------------
@@ -156,14 +157,14 @@ def check_ffmpeg() -> None:
         print(f'[FEHLER] "{ffmpeg_name}" wurde nicht gefunden!')
         print(f'Gesucht wurde im Ordner "{FFMPEG_DIR}" sowie im System-PATH.')
         print()
-        print("Loesungsmoeglichkeiten:")
+        print("Lösungsmöglichkeiten:")
         print(f'  - Unterordner "FFmpeg" neben diesem Skript anlegen und')
         print(f"    {ffmpeg_name} (und optional ffprobe{_EXE_SUFFIX}) dort hineinlegen,")
         print("    oder")
         if os.name == "nt":
-            print("  - FFmpeg systemweit installieren und zum PATH hinzufuegen")
+            print("  - FFmpeg systemweit installieren und zum PATH hinzufügen")
         else:
-            print("  - FFmpeg ueber den Paketmanager installieren, z.B.:")
+            print("  - FFmpeg über den Paketmanager installieren, z.B.:")
             print("      sudo apt install ffmpeg      (Debian/Ubuntu)")
             print("      brew install ffmpeg          (macOS)")
         pause()
@@ -191,15 +192,15 @@ def cleanup_temp_files() -> None:
 
 def get_input_file(label: str = "Datei") -> Path | None:
     """Fragt eine Eingabedatei ab. Nutzt zuerst eine per Drag & Drop
-    uebergebene Datei, danach manuelle Eingabe. Gibt None zurueck, wenn
+    übergebene Datei, danach manuelle Eingabe. Gibt None zurück, wenn
     die Datei nicht existiert."""
     global _dropped_file
     if _dropped_file:
         raw = _dropped_file
-        print(f"Verwende per Drag & Drop uebergebene Datei als {label}: {raw}")
+        print(f"Verwende per Drag & Drop übergebene Datei als {label}: {raw}")
         _dropped_file = None
     else:
-        print(f"Tipp: {label} per Drag & Drop in dieses Fenster ziehen und Enter druecken,")
+        print(f"Tipp: {label} per Drag & Drop in dieses Fenster ziehen und Enter drücken,")
         raw = ask(f"oder Dateiname/Pfad eingeben ({label}): ")
 
     raw = raw.strip().strip('"')
@@ -212,25 +213,25 @@ def get_input_file(label: str = "Datei") -> Path | None:
 
 
 def get_file_info(path: Path) -> tuple[Path, str, str]:
-    """Gibt (Verzeichnis, Basisname, Endung-mit-Punkt) zurueck."""
+    """Gibt (Verzeichnis, Basisname, Endung-mit-Punkt) zurück."""
     return path.parent, path.stem, path.suffix
 
 
 def ask_custom_output(default_output: Path) -> Path | None:
-    """Schlaegt einen Standard-Ausgabepfad vor und erlaubt einen eigenen
-    Namen. Prueft, dass das Zielverzeichnis existiert.
+    """Schlägt einen Standard-Ausgabepfad vor und erlaubt einen eigenen
+    Namen. Prüft, dass das Zielverzeichnis existiert.
 
     Wird nur ein blanker Dateiname ohne Pfad eingegeben (z.B. "neu.mp4"),
     wird dieser im selben Ordner wie der Standard-Vorschlag gespeichert -
     NICHT im aktuellen Arbeitsverzeichnis des Programms. Das verhindert
     "Permission denied"-Fehler, wenn das Programm z.B. aus einem
-    schreibgeschuetzten Ordner (Programme, System32 o.ae.) gestartet wurde.
+    schreibgeschützten Ordner (Programme, System32 o.ä.) gestartet wurde.
     """
     output = default_output
     while True:
         print()
         print(f"Ausgabedatei: {output}")
-        custom = ask("Anderen Dateinamen verwenden? (Enter fuer Standard): ").strip().strip('"')
+        custom = ask("Anderen Dateinamen verwenden? (Enter für Standard): ").strip().strip('"')
         if custom:
             custom_path = Path(custom)
             if custom_path.is_absolute() or len(custom_path.parts) > 1:
@@ -248,8 +249,30 @@ def ask_custom_output(default_output: Path) -> Path | None:
         return output
 
 
+def resolve_conflict_output(output: Path, label: str) -> Path | None:
+    """Punkt 8: Existiert die Zieldatei bereits und soll nicht überschrieben
+    werden, wird - statt den Export einfach zu überspringen - nach einem
+    alternativen Dateinamen gefragt. Leere Eingabe an dieser Stelle
+    überspringt den Export bewusst (explizite Nutzerentscheidung). Gibt den
+    finalen (konfliktfreien) Pfad zurück, oder None bei explizitem
+    Ueberspringen."""
+    while output.exists():
+        if check_overwrite(output):
+            return output
+        print()
+        custom = ask(f"Alternativer Dateiname für {label} (leer = Export überspringen): ").strip().strip('"')
+        if not custom:
+            return None
+        custom_path = Path(custom)
+        if custom_path.is_absolute() or len(custom_path.parts) > 1:
+            output = custom_path
+        else:
+            output = output.parent / custom_path
+    return output
+
+
 def check_overwrite(path: Path) -> bool:
-    """Prueft ob eine Datei bereits existiert und fragt ggf. nach.
+    """Prüft ob eine Datei bereits existiert und fragt ggf. nach.
     True = fortfahren, False = abbrechen."""
     if not path.exists():
         return True
@@ -263,6 +286,25 @@ def check_overwrite(path: Path) -> bool:
             return False
 
 
+def parse_time_to_seconds(value: str) -> float | None:
+    """Wandelt eine Zeitangabe ('SS', 'MM:SS', 'HH:MM:SS', jeweils optional
+    mit Nachkommastellen) in Sekunden um. Gibt None zurück, wenn der Wert
+    nicht als Zeit interpretiert werden kann (Punkt 7)."""
+    parts = value.split(":")
+    try:
+        if len(parts) == 1:
+            return float(parts[0])
+        if len(parts) == 2:
+            minutes, seconds = parts
+            return int(minutes) * 60 + float(seconds)
+        if len(parts) == 3:
+            hours, minutes, seconds = parts
+            return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    except ValueError:
+        return None
+    return None
+
+
 def ask_time(prompt: str) -> str:
     """Fragt eine Zeitangabe ab und wiederholt, bis das Format plausibel
     ist (nur Ziffern, ':' und '.', nicht leer)."""
@@ -270,7 +312,7 @@ def ask_time(prompt: str) -> str:
         value = ask(prompt).strip()
         if value and TIME_RE.match(value):
             return value
-        print("[FEHLER] Ungueltiges Zeitformat! Erlaubt sind nur Ziffern, ':' und '.'")
+        print("[FEHLER] Ungültiges Zeitformat! Erlaubt sind nur Ziffern, ':' und '.'")
         print("(z.B. 00:01:41 oder 95.5).")
 
 
@@ -279,7 +321,7 @@ def ask_time(prompt: str) -> str:
 # ---------------------------------------------------------------------------
 
 def run_ffmpeg(args: list[str]) -> int:
-    """Ruft ffmpeg mit einer Argumentliste auf (kein Shell-Parsing noetig,
+    """Ruft ffmpeg mit einer Argumentliste auf (kein Shell-Parsing nötig,
     daher sind Klammern/Sonderzeichen in Dateinamen kein Problem)."""
     cmd = [str(FFMPEG), "-y"] + args
     result = subprocess.run(cmd)
@@ -296,7 +338,23 @@ def report_result(returncode: int, err_msg: str, success_msg: str) -> bool:
 
 def detect_audio_codec(path: Path) -> str | None:
     """Ermittelt den Audio-Codec einer Datei. Nutzt ffprobe falls
-    vorhanden, sonst ffmpeg-Fallback ueber die stderr-Ausgabe."""
+    vorhanden, sonst ffmpeg-Fallback über die stderr-Ausgabe.
+    Dünnes Wrapper um _detect_audio_codec_cached (Punkt 6): das Ergebnis
+    wird pro (aufgelöstem) Pfad gecacht, damit z.B. trennen_beide() oder
+    ein erneuter Aufruf für dieselbe Datei nicht erneut ffprobe/ffmpeg
+    aufruft. Die Info-Ausgabe ('Erkanntes Audioformat: ...') erfolgt aber
+    bei jedem Aufruf, damit der Nutzer sie weiterhin sieht."""
+    codec = _detect_audio_codec_cached(str(path.resolve()))
+    if not codec:
+        print("[WARNUNG] Kein Audio-Stream gefunden oder Codec konnte nicht erkannt werden!")
+    else:
+        print(f"Erkanntes Audioformat: {codec}")
+    return codec
+
+
+@functools.lru_cache(maxsize=None)
+def _detect_audio_codec_cached(resolved_path: str) -> str | None:
+    path = Path(resolved_path)
     codec = None
     if FFPROBE.is_file():
         cmd = [
@@ -310,7 +368,7 @@ def detect_audio_codec(path: Path) -> str | None:
         except OSError:
             codec = None
     else:
-        print("[INFO] ffprobe.exe nicht gefunden, verwende ffmpeg fuer Codec-Erkennung")
+        print("[INFO] ffprobe.exe nicht gefunden, verwende ffmpeg für Codec-Erkennung")
         cmd = [str(FFMPEG), "-i", str(path)]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         for line in proc.stderr.splitlines():
@@ -319,10 +377,6 @@ def detect_audio_codec(path: Path) -> str | None:
                 codec = after.split(",")[0].strip()
                 break
 
-    if not codec:
-        print("[WARNUNG] Kein Audio-Stream gefunden oder Codec konnte nicht erkannt werden!")
-        return None
-    print(f"Erkanntes Audioformat: {codec}")
     return codec
 
 
@@ -332,49 +386,13 @@ def audio_ext_for_codec(codec: str | None) -> str:
     return AUDIO_EXT_MAP.get(codec.lower(), "mka")
 
 
-def select_mp3_bitrate() -> tuple[list[str], str] | None:
-    """Zeigt das MP3-Bitraten-Menue an. Gibt (ffmpeg_params, info_text)
-    zurueck."""
-    while True:
-        header("MP3-Bitrate auswaehlen")
-        print("  [1] 128 kbps  (kleine Dateigroesse, ok fuer Sprache)")
-        print("  [2] 160 kbps  (Standard)")
-        print("  [3] 192 kbps  (guter Kompromiss)")
-        print("  [4] 256 kbps  (hohe Qualitaet)")
-        print("  [5] 320 kbps  (maximale MP3-Qualitaet)")
-        print("  [6] VBR V0    (~245 kbps, variabel, beste Qualitaet)")
-        print("  [7] VBR V2    (~190 kbps, variabel, sehr gut)")
-        print("  [8] VBR V4    (~165 kbps, variabel, gut fuer Sprache)")
-        print("  [9] Eigene Bitrate eingeben")
-        print()
-        choice = ask("Deine Auswahl: ").strip()
-
-        if choice in MP3_BITRATES:
-            return MP3_BITRATES[choice]
-
-        if choice == "9":
-            print()
-            print("Empfohlene Werte: 96, 128, 160, 192, 224, 256, 320")
-            custom = ask("Bitrate in kbps eingeben: ").strip()
-            if custom.isdigit():
-                return (["-c:a", "libmp3lame", "-b:a", f"{custom}k"],
-                         f"{custom} kbps CBR (benutzerdefiniert)")
-            print()
-            print("[FEHLER] Ungueltige Eingabe! Bitte nur eine Zahl eingeben.")
-            pause()
-            continue
-
-        print("Ungueltige Auswahl!")
-        pause()
-
-
 def select_bitrate(presets: dict, title: str, codec_args: list[str] | None = None
                     ) -> tuple[list[str], str] | None:
-    """Generisches Bitraten-/Qualitaets-Auswahlmenu (fuer AAC, Opus, Vorbis
+    """Generisches Bitraten-/Qualitäts-Auswahlmenu (für AAC, Opus, Vorbis
     etc.). 'presets' hat dasselbe Format wie MP3_BITRATES. Ist 'codec_args'
-    gesetzt, wird zusaetzlich eine Option fuer eine benutzerdefinierte
-    Bitrate (in kbps) angeboten. Gibt None zurueck, wenn der Nutzer
-    zurueck moechte."""
+    gesetzt, wird zusätzlich eine Option für eine benutzerdefinierte
+    Bitrate (in kbps) angeboten. Gibt None zurück, wenn der Nutzer
+    zurück möchte."""
     custom_key = str(max(int(k) for k in presets) + 1)
     while True:
         header(title)
@@ -383,7 +401,7 @@ def select_bitrate(presets: dict, title: str, codec_args: list[str] | None = Non
             print(f"  [{key}] {label}")
         if codec_args is not None:
             print(f"  [{custom_key}] Eigene Bitrate eingeben")
-        print("  [0] Zurueck")
+        print("  [0] Zurück")
         print()
         choice = ask("Deine Auswahl: ").strip()
 
@@ -398,76 +416,217 @@ def select_bitrate(presets: dict, title: str, codec_args: list[str] | None = Non
                 return (codec_args + ["-b:a", f"{custom}k"],
                          f"{custom} kbps (benutzerdefiniert)")
             print()
-            print("[FEHLER] Ungueltige Eingabe! Bitte nur eine Zahl eingeben.")
+            print("[FEHLER] Ungültige Eingabe! Bitte nur eine Zahl eingeben.")
             pause()
             continue
 
         if choice == "0":
             return None
 
-        print("Ungueltige Auswahl!")
+        print("Ungültige Auswahl!")
         pause()
 
 
-def select_audio_format() -> tuple[str, list[str], str] | None:
-    """Zeigt das Zielformat-Menue fuer die Audio-Konvertierung an und
-    anschliessend (falls zutreffend) das passende Bitraten-/Qualitaetsmenue.
-    Gibt (Dateiendung, ffmpeg-Codec-Parameter, Info-Text) zurueck, oder
-    None, wenn der Nutzer zurueck zum Hauptmenue moechte."""
+# Tabellengetriebene Definition der verlustbehafteten Zielformate (Punkt 4).
+# Jeder Eintrag beschreibt eine Zeile im Zielformat-Menü sowie das
+# zugehörige Bitraten-/Qualitätsmenü. Ein neues Format hinzuzufügen
+# bedeutet nur noch: neuen Eintrag ergänzen, keine neue if-Kette nötig.
+AUDIO_FORMATS = [
+    {"key": "1", "ext": "mp3", "label": "MP3         (verlustbehaftet, universell kompatibel)",
+     "presets": MP3_BITRATES, "menu_title": "MP3-Bitrate auswählen",
+     "codec_args": ["-c:a", "libmp3lame"]},
+    {"key": "2", "ext": "m4a", "label": "AAC / M4A   (verlustbehaftet, gut für Apple-Geräte)",
+     "presets": AAC_BITRATES, "menu_title": "AAC-Bitrate auswählen",
+     "codec_args": ["-c:a", "aac"]},
+    {"key": "3", "ext": "opus", "label": "Opus        (verlustbehaftet, beste Qualität pro kbps)",
+     "presets": OPUS_BITRATES, "menu_title": "Opus-Bitrate auswählen",
+     "codec_args": ["-c:a", "libopus"]},
+    {"key": "4", "ext": "ogg", "label": "Vorbis/OGG  (verlustbehaftet, freies Format)",
+     "presets": VORBIS_BITRATES, "menu_title": "Vorbis-Qualität auswählen",
+     "codec_args": ["-c:a", "libvorbis"]},
+]
+AUDIO_FORMATS_BY_KEY = {fmt["key"]: fmt for fmt in AUDIO_FORMATS}
+
+
+def select_flac_options() -> tuple[str, list[str], str] | None:
+    """FLAC-Kompressionslevel wählen (Punkt 10). 0 = schnell/grösser,
+    8 = langsam/kleiner, Standard ist 5. Gibt None zurück bei 'Zurück'."""
     while True:
-        header("Audio konvertieren - Zielformat waehlen")
-        print("  [1] MP3         (verlustbehaftet, universell kompatibel)")
-        print("  [2] AAC / M4A   (verlustbehaftet, gut fuer Apple-Geraete)")
-        print("  [3] Opus        (verlustbehaftet, beste Qualitaet pro kbps)")
-        print("  [4] Vorbis/OGG  (verlustbehaftet, freies Format)")
-        print("  [5] FLAC        (verlustfrei, komprimiert)")
-        print("  [6] WAV         (verlustfrei, unkomprimiert)")
-        print("  [0] Zurueck zum Hauptmenue")
+        header("FLAC-Kompressionslevel wählen")
+        print("Level 0 = schnellste Kompression, grösste Datei")
+        print("Level 8 = langsamste Kompression, kleinste Datei")
+        print("(Die Audioqualität ist bei FLAC in jedem Level verlustfrei identisch)")
         print()
-        choice = ask("Zielformat waehlen: ").strip()
+        print("  [1] Standard (Level 5)")
+        print("  [2] Eigenes Level eingeben (0-8)")
+        print("  [0] Zurück")
+        print()
+        choice = ask("Deine Auswahl: ").strip()
 
         if choice == "1":
-            picked = select_bitrate(MP3_BITRATES, "MP3-Bitrate auswaehlen")
-            if picked is None:
-                continue
-            params, info = picked
-            return "mp3", params, info
+            return "flac", ["-c:a", "flac", "-compression_level", "5"], "FLAC Level 5 (Standard)"
 
         if choice == "2":
-            picked = select_bitrate(AAC_BITRATES, "AAC-Bitrate auswaehlen",
-                                     codec_args=["-c:a", "aac"])
-            if picked is None:
-                continue
-            params, info = picked
-            return "m4a", params, info
-
-        if choice == "3":
-            picked = select_bitrate(OPUS_BITRATES, "Opus-Bitrate auswaehlen",
-                                     codec_args=["-c:a", "libopus"])
-            if picked is None:
-                continue
-            params, info = picked
-            return "opus", params, info
-
-        if choice == "4":
-            picked = select_bitrate(VORBIS_BITRATES, "Vorbis-Qualitaet auswaehlen",
-                                     codec_args=["-c:a", "libvorbis"])
-            if picked is None:
-                continue
-            params, info = picked
-            return "ogg", params, info
-
-        if choice == "5":
-            return "flac", ["-c:a", "flac"], "FLAC (verlustfrei, komprimiert)"
-
-        if choice == "6":
-            return "wav", ["-c:a", "pcm_s16le"], "WAV PCM 16-bit (verlustfrei)"
+            level = ask("Kompressionslevel eingeben (0-8): ").strip()
+            if level.isdigit() and 0 <= int(level) <= 8:
+                return ("flac", ["-c:a", "flac", "-compression_level", level],
+                         f"FLAC Level {level}")
+            print()
+            print("[FEHLER] Bitte eine Zahl zwischen 0 und 8 eingeben.")
+            pause()
+            continue
 
         if choice == "0":
             return None
 
-        print("Ungueltige Auswahl!")
+        print("Ungültige Auswahl!")
         pause()
+
+
+def select_wav_options() -> tuple[str, list[str], str] | None:
+    """WAV-Bittiefe wählen (Punkt 11). Gibt None zurück bei 'Zurück'."""
+    while True:
+        header("WAV-Bittiefe wählen")
+        print("  [1] 16-bit PCM  (Standard, CD-Qualität)")
+        print("  [2] 24-bit PCM  (höhere Auflösung, grössere Datei)")
+        print("  [0] Zurück")
+        print()
+        choice = ask("Deine Auswahl: ").strip()
+
+        if choice == "1":
+            return "wav", ["-c:a", "pcm_s16le"], "WAV PCM 16-bit (verlustfrei)"
+
+        if choice == "2":
+            return "wav", ["-c:a", "pcm_s24le"], "WAV PCM 24-bit (verlustfrei)"
+
+        if choice == "0":
+            return None
+
+        print("Ungültige Auswahl!")
+        pause()
+
+
+def select_audio_format() -> tuple[str, list[str], str] | None:
+    """Zeigt das Zielformat-Menü für die Audio-Konvertierung an und
+    anschliessend (falls zutreffend) das passende Bitraten-/Qualitätsmenü.
+    Gibt (Dateiendung, ffmpeg-Codec-Parameter, Info-Text) zurück, oder
+    None, wenn der Nutzer zurück zum Hauptmenü möchte."""
+    while True:
+        header("Audio konvertieren - Zielformat wählen")
+        for fmt in AUDIO_FORMATS:
+            print(f"  [{fmt['key']}] {fmt['label']}")
+        print("  [5] FLAC        (verlustfrei, komprimiert)")
+        print("  [6] WAV         (verlustfrei, unkomprimiert)")
+        print("  [0] Zurück zum Hauptmenü")
+        print()
+        choice = ask("Zielformat wählen: ").strip()
+
+        if choice in AUDIO_FORMATS_BY_KEY:
+            fmt = AUDIO_FORMATS_BY_KEY[choice]
+            picked = select_bitrate(fmt["presets"], fmt["menu_title"], codec_args=fmt["codec_args"])
+            if picked is None:
+                continue
+            params, info = picked
+            return fmt["ext"], params, info
+
+        if choice == "5":
+            picked = select_flac_options()
+            if picked is None:
+                continue
+            return picked
+
+        if choice == "6":
+            picked = select_wav_options()
+            if picked is None:
+                continue
+            return picked
+
+        if choice == "0":
+            return None
+
+        print("Ungültige Auswahl!")
+        pause()
+
+
+# ---------------------------------------------------------------------------
+# Extension-Check, Cover-Art-Erhalt, Encoder-Verfügbarkeit (Punkte 1, 2, 9)
+# ---------------------------------------------------------------------------
+
+def confirm_extension(output: Path, expected_ext: str) -> Path:
+    """Punkt 1: Warnt, wenn die Endung der Ausgabedatei nicht zum gewählten
+    Codec passt (z.B. FLAC-Daten in einer .mp3-Datei landen würden) und
+    bietet an, die Endung automatisch zu korrigieren."""
+    actual_ext = output.suffix.lstrip(".").lower()
+    if actual_ext == expected_ext.lower():
+        return output
+
+    print()
+    print(f'[WARNUNG] Die Endung ".{actual_ext}" passt nicht zum gewählten Format '
+          f'(erwartet: ".{expected_ext}").')
+    print("FFmpeg würde die Audiodaten trotzdem in diesen Container packen -")
+    print("das Ergebnis wäre je nach Player fehlerhaft oder gar nicht abspielbar.")
+    fix = ask(f'Endung automatisch zu ".{expected_ext}" korrigieren? (J=Ja, N=Nein, behalten): ').strip().lower()
+    if fix in ("j", "ja"):
+        return output.with_suffix(f".{expected_ext}")
+    return output
+
+
+def convert_with_cover_preservation(path: Path, codec_params: list[str],
+                                     output: Path, target_ext: str) -> int:
+    """Punkt 2: Bei der Audio-Konvertierung entfernte bislang '-vn' *alle*
+    Videospuren - inklusive eingebettetem Album-Cover (das ffmpeg technisch
+    als Videostream führt). Hier wird zuerst versucht, ein vorhandenes
+    Cover als 'attached_pic' zu übernehmen. WAV kennt keine Bildanhänge,
+    daher wird dort direkt ohne Cover konvertiert. Schlägt der Versuch mit
+    Cover fehl (z.B. kein Cover vorhanden, Zielformat ungeeignet), wird
+    automatisch ohne Cover (-vn) erneut versucht."""
+    if target_ext != "wav":
+        rc = run_ffmpeg([
+            "-i", str(path), "-map", "0:a", "-map", "0:v?",
+            "-c:v", "copy", "-disposition:v", "attached_pic",
+            *codec_params, str(output),
+        ])
+        if rc == 0:
+            return rc
+        print("[INFO] Konvertierung mit Cover-Erhalt nicht möglich, versuche ohne Cover...")
+
+    return run_ffmpeg(["-i", str(path), *codec_params, "-vn", str(output)])
+
+
+@functools.lru_cache(maxsize=None)
+def _get_available_encoders() -> frozenset[str]:
+    """Fragt einmalig die Liste der in dieser ffmpeg-Version verfügbaren
+    Encoder ab und cacht das Ergebnis für den Rest des Programmlaufs."""
+    try:
+        proc = subprocess.run([str(FFMPEG), "-hide_banner", "-encoders"],
+                               capture_output=True, text=True)
+        names = re.findall(r"^\s*[A-Z\.]{6}\s+(\S+)", proc.stdout, re.MULTILINE)
+        return frozenset(names)
+    except OSError:
+        return frozenset()
+
+
+def warn_if_encoder_missing(codec_params: list[str]) -> bool:
+    """Punkt 9: Prüft, ob der in codec_params verwendete Encoder (nach
+    '-c:a') in der vorhandenen ffmpeg-Version enthalten ist, *bevor* die
+    Konvertierung gestartet wird. Gibt False zurück, wenn der Nutzer
+    daraufhin abbrechen möchte."""
+    if "-c:a" not in codec_params:
+        return True
+    encoder = codec_params[codec_params.index("-c:a") + 1]
+    if encoder.startswith("pcm_") or encoder == "copy":
+        return True  # PCM/Copy sind praktisch immer vorhanden
+
+    available = _get_available_encoders()
+    if not available or encoder in available:
+        return True  # Liste leer (Abfrage fehlgeschlagen) -> im Zweifel weitermachen
+
+    print()
+    print(f'[WARNUNG] Der Encoder "{encoder}" scheint in dieser ffmpeg-Version')
+    print("nicht enthalten zu sein. Die Konvertierung würde vermutlich mit einer")
+    print("ffmpeg-Fehlermeldung fehlschlagen.")
+    choice = ask("Trotzdem versuchen? (J=Ja, N=Nein/Abbrechen): ").strip().lower()
+    return choice in ("j", "ja")
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +639,7 @@ def menu_schnitt() -> None:
         print("  [1] Anfang abschneiden")
         print("  [2] Mittleren Teil herausschneiden")
         print("  [3] Ende abschneiden (nur Anfangsteil behalten)")
-        print("  [0] Zurueck zum Hauptmenue")
+        print("  [0] Zurück zum Hauptmenü")
         print()
         try:
             choice = ask("Deine Auswahl: ").strip()
@@ -494,7 +653,7 @@ def menu_schnitt() -> None:
             elif choice == "0":
                 return
             else:
-                print("Ungueltige Auswahl!")
+                print("Ungültige Auswahl!")
                 pause()
         except KeyboardInterrupt:
             interrupted()
@@ -519,8 +678,8 @@ def schnitt_anfang() -> None:
 
     print()
     print("Schneide Anfang ab...")
-    print("(Hinweis: Stream-Copy schneidet am naechsten Keyframe, kleine")
-    print(" Abweichungen vom exakten Zeitstempel sind moeglich)")
+    print("(Hinweis: Stream-Copy schneidet am nächsten Keyframe, kleine")
+    print(" Abweichungen vom exakten Zeitstempel sind möglich)")
     rc = run_ffmpeg(["-ss", start, "-i", str(path), "-c", "copy", str(output)])
     report_result(rc, "Beim Schneiden ist ein Fehler aufgetreten",
                   f"Fertig! Datei gespeichert als: {output}")
@@ -536,8 +695,18 @@ def schnitt_mitte() -> None:
     dir_, basename, ext = get_file_info(path)
 
     print()
-    start = ask_time("Startzeit des zu loeschenden Bereichs (z.B. 00:01:41): ")
-    end = ask_time("Endzeit des zu loeschenden Bereichs (z.B. 00:02:03): ")
+    while True:
+        start = ask_time("Startzeit des zu löschenden Bereichs (z.B. 00:01:41): ")
+        end = ask_time("Endzeit des zu löschenden Bereichs (z.B. 00:02:03): ")
+
+        start_s = parse_time_to_seconds(start)
+        end_s = parse_time_to_seconds(end)
+        if start_s is not None and end_s is not None and end_s <= start_s:
+            print()
+            print("[FEHLER] Die Endzeit muss nach der Startzeit liegen!")
+            pause()
+            continue
+        break
 
     output = ask_custom_output(dir_ / f"{basename}_mitte_geschnitten{ext}")
     if not check_overwrite(output):
@@ -574,9 +743,9 @@ def schnitt_mitte() -> None:
         f.write(f"file '{tmp1}'\n")
         f.write(f"file '{tmp2}'\n")
 
-    print("[4/4] Fuege Teile zusammen...")
+    print("[4/4] Füge Teile zusammen...")
     rc = run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(tmplist), "-c", "copy", str(output)])
-    report_result(rc, "Beim Zusammenfuegen ist ein Fehler aufgetreten",
+    report_result(rc, "Beim Zusammenfügen ist ein Fehler aufgetreten",
                   f"Fertig! Datei gespeichert als: {output}")
 
     tmp1.unlink(missing_ok=True)
@@ -616,7 +785,7 @@ def schnitt_ende() -> None:
 
 def merge_collect_files() -> list[Path] | None:
     """Fragt nacheinander Videodateien ab (mind. 2), leere Eingabe beendet
-    die Sammlung. Gibt None zurueck, wenn abgebrochen wird."""
+    die Sammlung. Gibt None zurück, wenn abgebrochen wird."""
     files: list[Path] = []
 
     first = get_input_file("1. Videodatei")
@@ -625,8 +794,8 @@ def merge_collect_files() -> list[Path] | None:
     files.append(first)
 
     print()
-    print("Weitere Videodatei hinzufuegen (Reihenfolge = Ausgabereihenfolge).")
-    print("Leere Eingabe druecken, wenn alle Dateien hinzugefuegt wurden.")
+    print("Weitere Videodatei hinzufügen (Reihenfolge = Ausgabereihenfolge).")
+    print("Leere Eingabe drücken, wenn alle Dateien hinzugefügt wurden.")
     print()
 
     while True:
@@ -638,11 +807,11 @@ def merge_collect_files() -> list[Path] | None:
             print(f'[FEHLER] Datei "{raw}" wurde nicht gefunden!')
             continue
         files.append(path)
-        print(f"  -> hinzugefuegt: {path.name}")
+        print(f"  -> hinzugefügt: {path.name}")
 
     if len(files) < 2:
         print()
-        print("[FEHLER] Es werden mindestens 2 Videodateien benoetigt!")
+        print("[FEHLER] Es werden mindestens 2 Videodateien benötigt!")
         return None
 
     return files
@@ -651,17 +820,17 @@ def merge_collect_files() -> list[Path] | None:
 def menu_merge() -> None:
     while True:
         header("Videos zusammensetzen (Merge)")
-        print("Fuegt mehrere Videodateien in der angegebenen Reihenfolge")
+        print("Fügt mehrere Videodateien in der angegebenen Reihenfolge")
         print("zu einer einzigen Datei zusammen.")
         print()
         print("  [1] Schnell (Stream-Copy, verlustfrei)")
-        print("      - erfordert identische Codecs/Aufloesung/Format")
+        print("      - erfordert identische Codecs/Auflösung/Format")
         print("  [2] Kompatibel (Re-Encoding)")
         print("      - funktioniert auch bei unterschiedlichen Quelldateien")
-        print("  [0] Zurueck zum Hauptmenue")
+        print("  [0] Zurück zum Hauptmenü")
         print()
         try:
-            choice = ask("Waehle Methode: ").strip()
+            choice = ask("Wähle Methode: ").strip()
 
             if choice == "1":
                 merge_concat_copy()
@@ -670,7 +839,7 @@ def menu_merge() -> None:
             elif choice == "0":
                 return
             else:
-                print("Ungueltige Auswahl!")
+                print("Ungültige Auswahl!")
                 pause()
         except KeyboardInterrupt:
             interrupted()
@@ -700,16 +869,16 @@ def merge_concat_copy() -> None:
             f.write(f"file '{escaped}'\n")
 
     print()
-    print(f"Fuege {len(files)} Videos zusammen (Stream-Copy, verlustfrei)...")
+    print(f"Füge {len(files)} Videos zusammen (Stream-Copy, verlustfrei)...")
     rc = run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(tmplist), "-c", "copy", str(output)])
     print()
     ok = report_result(rc, "Beim Zusammensetzen ist ein Fehler aufgetreten",
                         f"Fertig! Datei gespeichert als: {output}")
     if not ok:
-        print("Moegliche Ursachen (siehe FFmpeg-Ausgabe oben fuer Details):")
-        print(" - Die Videos haben unterschiedliche Codecs, Aufloesungen")
+        print("Mögliche Ursachen (siehe FFmpeg-Ausgabe oben für Details):")
+        print(" - Die Videos haben unterschiedliche Codecs, Auflösungen")
         print("   oder Formate -> nutze die Methode [2] Kompatibel (Re-Encoding)")
-        print(" - Zielordner nicht beschreibbar -> anderen Pfad waehlen")
+        print(" - Zielordner nicht beschreibbar -> anderen Pfad wählen")
 
     tmplist.unlink(missing_ok=True)
     pause()
@@ -737,8 +906,8 @@ def merge_concat_reencode() -> None:
     filter_complex = f"{filter_parts}concat=n={len(files)}:v=1:a=1[outv][outa]"
 
     print()
-    print(f"Fuege {len(files)} Videos zusammen (Re-Encoding)...")
-    print("Dies kann je nach Anzahl und Laenge der Videos einige Zeit dauern...")
+    print(f"Füge {len(files)} Videos zusammen (Re-Encoding)...")
+    print("Dies kann je nach Anzahl und Länge der Videos einige Zeit dauern...")
     print()
     rc = run_ffmpeg([
         *args, "-filter_complex", filter_complex,
@@ -750,12 +919,12 @@ def merge_concat_reencode() -> None:
     ok = report_result(rc, "Beim Zusammensetzen ist ein Fehler aufgetreten",
                         f"Fertig! Datei gespeichert als: {output}")
     if not ok:
-        print("Moegliche Ursachen (siehe FFmpeg-Ausgabe oben fuer Details):")
-        print(" - Zielordner nicht beschreibbar (z.B. Programm laeuft in")
-        print("   einem schreibgeschuetzten Verzeichnis) -> anderen Pfad waehlen")
-        print(" - Eine der Videodateien enthaelt keinen Audio-Stream")
-        print("   (alle Eingabedateien benoetigen Bild UND Ton)")
-        print(" - Beschaedigte Eingabedatei oder unzureichender Speicherplatz")
+        print("Mögliche Ursachen (siehe FFmpeg-Ausgabe oben für Details):")
+        print(" - Zielordner nicht beschreibbar (z.B. Programm läuft in")
+        print("   einem schreibgeschützten Verzeichnis) -> anderen Pfad wählen")
+        print(" - Eine der Videodateien enthält keinen Audio-Stream")
+        print("   (alle Eingabedateien benötigen Bild UND Ton)")
+        print(" - Beschädigte Eingabedatei oder unzureichender Speicherplatz")
     pause()
 
 
@@ -769,7 +938,7 @@ def menu_trennen() -> None:
         print("  [1] Nur Audio exportieren (verlustfrei)")
         print("  [2] Nur Video exportieren (verlustfrei, ohne Ton)")
         print("  [3] Beides gleichzeitig exportieren")
-        print("  [0] Zurueck zum Hauptmenue")
+        print("  [0] Zurück zum Hauptmenü")
         print()
         try:
             choice = ask("Deine Auswahl: ").strip()
@@ -783,7 +952,7 @@ def menu_trennen() -> None:
             elif choice == "0":
                 return
             else:
-                print("Ungueltige Auswahl!")
+                print("Ungültige Auswahl!")
                 pause()
         except KeyboardInterrupt:
             interrupted()
@@ -843,28 +1012,25 @@ def trennen_beide() -> None:
     dir_, basename, _ext = get_file_info(path)
     a_ext = audio_ext_for_codec(detect_audio_codec(path))
 
-    audio_out = dir_ / f"{basename}_audio.{a_ext}"
-    video_out = dir_ / f"{basename}_video.mp4"
-
-    audio_ok = check_overwrite(audio_out)
-    video_ok = check_overwrite(video_out)
+    audio_out = resolve_conflict_output(dir_ / f"{basename}_audio.{a_ext}", "Audio")
+    video_out = resolve_conflict_output(dir_ / f"{basename}_video.mp4", "Video")
 
     print()
-    if audio_ok:
+    if audio_out is not None:
         print("Exportiere Audio...")
         rc = run_ffmpeg(["-i", str(path), "-vn", "-c", "copy", str(audio_out)])
         report_result(rc, "Beim Audio-Export ist ein Fehler aufgetreten",
                       f"Audio exportiert: {audio_out}")
     else:
-        print("Audio-Export uebersprungen.")
+        print("Audio-Export übersprungen.")
 
-    if video_ok:
+    if video_out is not None:
         print("Exportiere Video...")
         rc = run_ffmpeg(["-i", str(path), "-an", "-c", "copy", str(video_out)])
         report_result(rc, "Beim Video-Export ist ein Fehler aufgetreten",
                       f"Video exportiert: {video_out}")
     else:
-        print("Video-Export uebersprungen.")
+        print("Video-Export übersprungen.")
     pause()
 
 
@@ -874,10 +1040,10 @@ def trennen_beide() -> None:
 
 def menu_mux() -> None:
     while True:
-        header("Audio + Video zusammenfuegen (Muxen)")
-        print("  [1] Audio unveraendert uebernehmen (verlustfrei)")
-        print("  [2] Audio dabei zu MP3 konvertieren (z.B. bei WAV)")
-        print("  [0] Zurueck zum Hauptmenue")
+        header("Audio + Video zusammenfügen (Muxen)")
+        print("  [1] Audio unverändert übernehmen (verlustfrei)")
+        print("  [2] Audio dabei konvertieren (z.B. bei WAV: MP3/AAC/Opus)")
+        print("  [0] Zurück zum Hauptmenü")
         print()
         try:
             choice = ask("Deine Auswahl: ").strip()
@@ -885,18 +1051,18 @@ def menu_mux() -> None:
             if choice == "1":
                 mux_copy()
             elif choice == "2":
-                mux_mp3()
+                mux_convert()
             elif choice == "0":
                 return
             else:
-                print("Ungueltige Auswahl!")
+                print("Ungültige Auswahl!")
                 pause()
         except KeyboardInterrupt:
             interrupted()
 
 
 def mux_copy() -> None:
-    header("Muxen - Audio unveraendert uebernehmen")
+    header("Muxen - Audio unverändert übernehmen")
     video = get_input_file("Videodatei")
     if video is None:
         pause()
@@ -915,7 +1081,7 @@ def mux_copy() -> None:
         return
 
     print()
-    print("Fuege Video und Audio zusammen...")
+    print("Füge Video und Audio zusammen...")
     rc = run_ffmpeg([
         "-i", str(video), "-i", str(audio), "-c", "copy",
         "-map", "0:v:0", "-map", "1:a:0", str(output),
@@ -923,15 +1089,43 @@ def mux_copy() -> None:
     ok = report_result(rc, "Beim Muxen ist ein Fehler aufgetreten",
                         f"Muxen abgeschlossen: {output}")
     if not ok:
-        print("Moegliche Ursache: Der Audio-Codec ist im Ziel-Container nicht erlaubt")
-        print("(z.B. WAV direkt in MP4). Nutze in diesem Fall Option [2] im Muxen-Menue.")
+        print("Mögliche Ursache: Der Audio-Codec ist im Ziel-Container nicht erlaubt")
+        print("(z.B. WAV direkt in MP4). Nutze in diesem Fall Option [2] im Muxen-Menü.")
     pause()
 
 
-def mux_mp3() -> None:
-    header("Muxen mit MP3-Konvertierung")
-    print("Kombiniert eine Videodatei (ohne Ton) mit einer")
-    print("Audiodatei und konvertiert das Audio dabei zu MP3.")
+def select_mux_audio_format() -> tuple[list[str], str] | None:
+    """Punkt 3: Zielformat-Auswahl fürs Muxen, generisch über
+    AUDIO_FORMATS statt der alten, MP3-fixen select_mp3_bitrate(). Vorbis/
+    OGG wird hier bewusst ausgelassen, da es im MP4-Container (Zielformat
+    beim Muxen) nicht zuverlässig unterstützt wird. Gibt None zurück bei
+    'Zurück'."""
+    mux_formats = [fmt for fmt in AUDIO_FORMATS if fmt["ext"] in ("mp3", "m4a", "opus")]
+    while True:
+        header("Audioformat fürs Muxen wählen")
+        for fmt in mux_formats:
+            print(f"  [{fmt['key']}] {fmt['label']}")
+        print("  [0] Zurück")
+        print()
+        choice = ask("Deine Auswahl: ").strip()
+
+        for fmt in mux_formats:
+            if choice == fmt["key"]:
+                picked = select_bitrate(fmt["presets"], fmt["menu_title"], codec_args=fmt["codec_args"])
+                if picked is None:
+                    break
+                return picked
+        else:
+            if choice == "0":
+                return None
+            print("Ungültige Auswahl!")
+            pause()
+
+
+def mux_convert() -> None:
+    header("Muxen mit Audio-Konvertierung")
+    print("Kombiniert eine Videodatei (ohne Ton) mit einer Audiodatei und")
+    print("konvertiert das Audio dabei in ein kompatibles Format (z.B. WAV -> MP3).")
     print("=" * 51)
     print()
     video = get_input_file("Videodatei (ohne Audio)")
@@ -944,12 +1138,17 @@ def mux_mp3() -> None:
         pause()
         return
 
-    dir_, basename, _ext = get_file_info(video)
-    bitrate = select_mp3_bitrate()
-    if bitrate is None:
+    picked = select_mux_audio_format()
+    if picked is None:
         return
-    mp3_params, mp3_info = bitrate
+    audio_params, audio_info = picked
 
+    if not warn_if_encoder_missing(audio_params):
+        print("Abgebrochen.")
+        pause()
+        return
+
+    dir_, basename, _ext = get_file_info(video)
     output = ask_custom_output(dir_ / f"{basename}_merged.mp4")
     if not check_overwrite(output):
         print("Abgebrochen.")
@@ -959,27 +1158,27 @@ def mux_mp3() -> None:
     header("Starte Muxing-Prozess")
     print(f"Video:    {video}")
     print(f"Audio:    {audio}")
-    print(f"Bitrate:  {mp3_info}")
+    print(f"Format:   {audio_info}")
     print(f"Ausgabe:  {output}")
     print()
-    print("Verarbeitung laeuft (Video wird kopiert, Audio zu MP3 konvertiert)...")
+    print("Verarbeitung läuft (Video wird kopiert, Audio konvertiert)...")
     print()
 
     rc = run_ffmpeg([
         "-i", str(video), "-i", str(audio), "-c:v", "copy",
-        *mp3_params, "-map", "0:v:0", "-map", "1:a:0", str(output),
+        *audio_params, "-map", "0:v:0", "-map", "1:a:0", str(output),
     ])
     print()
     ok = report_result(rc, "Beim Muxen ist ein Fehler aufgetreten", "Erfolgreich abgeschlossen!")
     if not ok:
-        print("Moegliche Ursachen:")
-        print(" - Video- und Audiolaenge unterscheiden sich stark")
-        print(" - Beschaedigte Eingabedateien")
+        print("Mögliche Ursachen:")
+        print(" - Video- und Audiolänge unterscheiden sich stark")
+        print(" - Beschädigte Eingabedateien")
         print(" - Unzureichender Speicherplatz")
     else:
         print(f"Ausgabedatei: {output}")
-        print(f"Audio-Format: MP3 ({mp3_info})")
-        print("Video-Format: unveraendert (verlustfrei kopiert)")
+        print(f"Audio-Format: {audio_info}")
+        print("Video-Format: unverändert (verlustfrei kopiert)")
     print()
     pause()
 
@@ -997,16 +1196,16 @@ def menu_rotate() -> None:
     dir_, basename, ext = get_file_info(path)
 
     while True:
-        header("Video Rotation - Winkel waehlen")
+        header("Video Rotation - Winkel wählen")
         print(f"Datei: {basename}{ext}")
         print()
         print("  [1] 90 Grad im Uhrzeigersinn")
         print("  [2] 180 Grad drehen")
         print("  [3] 270 Grad im Uhrzeigersinn (90 Grad gegen den UZS)")
-        print("  [0] Zurueck zum Hauptmenue")
+        print("  [0] Zurück zum Hauptmenü")
         print()
         try:
-            choice = ask("Waehle Rotation: ").strip()
+            choice = ask("Wähle Rotation: ").strip()
 
             if choice == "1":
                 rotation, suffix = "90", "_rot90"
@@ -1017,12 +1216,12 @@ def menu_rotate() -> None:
             elif choice == "0":
                 return
             else:
-                print("Ungueltige Auswahl!")
+                print("Ungültige Auswahl!")
                 pause()
                 continue
 
             if rotate_method_menu(path, dir_, basename, ext, rotation, suffix):
-                return  # zurueck zum Hauptmenue nach Erfolg/Ende
+                return  # zurück zum Hauptmenü nach Erfolg/Ende
         except KeyboardInterrupt:
             interrupted()
 
@@ -1030,15 +1229,15 @@ def menu_rotate() -> None:
 def rotate_method_menu(path: Path, dir_: Path, basename: str, ext: str,
                         rotation: str, suffix: str) -> bool:
     while True:
-        header("Rotations-Methode waehlen")
+        header("Rotations-Methode wählen")
         print("  [1] Metadaten-Rotation (instant, 100% verlustfrei)")
         print("      - keine Re-Encodierung, funktioniert in den meisten Playern")
         print("  [2] Pixel-Rotation (Re-Encoding, CRF 0 = verlustfrei)")
-        print("      - dauert laenger, funktioniert in allen Playern/Editoren")
-        print("  [0] Zurueck")
+        print("      - dauert länger, funktioniert in allen Playern/Editoren")
+        print("  [0] Zurück")
         print()
         try:
-            method = ask("Waehle Methode: ").strip()
+            method = ask("Wähle Methode: ").strip()
 
             if method == "1":
                 return rotate_metadata(path, dir_, basename, suffix, rotation)
@@ -1046,7 +1245,7 @@ def rotate_method_menu(path: Path, dir_: Path, basename: str, ext: str,
                 return rotate_reencode(path, dir_, basename, suffix, rotation)
             if method == "0":
                 return False
-            print("Ungueltige Auswahl!")
+            print("Ungültige Auswahl!")
             pause()
         except KeyboardInterrupt:
             interrupted()
@@ -1086,7 +1285,7 @@ def rotate_reencode(path: Path, dir_: Path, basename: str, suffix: str, rotation
 
     print()
     print("Rotiere Video (Re-Encoding, CRF 0 = verlustfrei)...")
-    print("Dies kann je nach Videolaenge einige Zeit dauern...")
+    print("Dies kann je nach Videolänge einige Zeit dauern...")
     print()
     rc = run_ffmpeg([
         "-i", str(path), "-vf", vf, "-c:v", "libx264", "-preset", "veryslow",
@@ -1114,18 +1313,24 @@ def menu_convert() -> None:
 
     result = select_audio_format()
     if result is None:
-        return  # Nutzer hat [0] gewaehlt -> zurueck zum Hauptmenue
+        return  # Nutzer hat [0] gewählt -> zurück zum Hauptmenü
     target_ext, codec_params, format_info = result
 
+    if not warn_if_encoder_missing(codec_params):
+        print("Abgebrochen.")
+        pause()
+        return
+
     output = ask_custom_output(dir_ / f"{basename}_converted.{target_ext}")
+    output = confirm_extension(output, target_ext)
     if not check_overwrite(output):
         print("Abgebrochen.")
         pause()
         return
 
     print()
-    print(f"Konvertierung laeuft ({format_info})...")
-    rc = run_ffmpeg(["-i", str(path), *codec_params, "-vn", str(output)])
+    print(f"Konvertierung läuft ({format_info})...")
+    rc = convert_with_cover_preservation(path, codec_params, output, target_ext)
     print()
     report_result(rc, "Bei der Konvertierung ist ein Fehler aufgetreten",
                   f"Fertig! Datei gespeichert als: {output}")
@@ -1142,7 +1347,7 @@ def main_menu() -> None:
         print("  [1] Video schneiden        (Anfang / Mitte / Ende)")
         print("  [2] Video zusammensetzen   (mehrere Videos mergen)")
         print("  [3] Audio / Video trennen  (exportieren, verlustfrei)")
-        print("  [4] Audio + Video muxen    (zusammenfuegen)")
+        print("  [4] Audio + Video muxen    (zusammenfügen)")
         print("  [5] Video rotieren")
         print("  [6] Audio konvertieren     (MP3, AAC, Opus, Vorbis, FLAC, WAV)")
         print("  [0] Beenden")
@@ -1168,7 +1373,7 @@ def main_menu() -> None:
             elif choice == "0":
                 sys.exit(0)
             else:
-                print("Ungueltige Auswahl!")
+                print("Ungültige Auswahl!")
                 pause()
         except KeyboardInterrupt:
             interrupted()
