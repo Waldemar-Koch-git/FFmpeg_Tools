@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 FFmpeg Multi-Tool (Python-Version)
-Vereint: Video-Schnitt, Audio/Video-Trennung, Muxen, Rotation, MP3-Konvertierung
+Vereint: Video-Schnitt, Audio/Video-Trennung, Muxen, Rotation, Audio-Konvertierung
+(MP3, AAC, Opus, Vorbis, FLAC, WAV)
 
 Funktioniert unter Windows, Linux und macOS. FFmpeg wird an zwei Stellen
 gesucht (in dieser Reihenfolge):
@@ -76,6 +77,30 @@ MP3_BITRATES = {
     "6": (["-c:a", "libmp3lame", "-q:a", "0"], "VBR V0 (~245 kbps)"),
     "7": (["-c:a", "libmp3lame", "-q:a", "2"], "VBR V2 (~190 kbps)"),
     "8": (["-c:a", "libmp3lame", "-q:a", "4"], "VBR V4 (~165 kbps)"),
+}
+
+AAC_BITRATES = {
+    "1": (["-c:a", "aac", "-b:a", "128k"], "128 kbps"),
+    "2": (["-c:a", "aac", "-b:a", "160k"], "160 kbps"),
+    "3": (["-c:a", "aac", "-b:a", "192k"], "192 kbps"),
+    "4": (["-c:a", "aac", "-b:a", "256k"], "256 kbps"),
+    "5": (["-c:a", "aac", "-b:a", "320k"], "320 kbps"),
+}
+
+OPUS_BITRATES = {
+    "1": (["-c:a", "libopus", "-b:a", "64k"], "64 kbps (Sprache/Podcast)"),
+    "2": (["-c:a", "libopus", "-b:a", "96k"], "96 kbps"),
+    "3": (["-c:a", "libopus", "-b:a", "128k"], "128 kbps (Standard, sehr gut)"),
+    "4": (["-c:a", "libopus", "-b:a", "160k"], "160 kbps"),
+    "5": (["-c:a", "libopus", "-b:a", "192k"], "192 kbps"),
+    "6": (["-c:a", "libopus", "-b:a", "256k"], "256 kbps (max. empfohlen)"),
+}
+
+VORBIS_BITRATES = {
+    "1": (["-c:a", "libvorbis", "-q:a", "3"], "~112 kbps (Qualitaet 3)"),
+    "2": (["-c:a", "libvorbis", "-q:a", "5"], "~160 kbps (Qualitaet 5, Standard)"),
+    "3": (["-c:a", "libvorbis", "-q:a", "7"], "~224 kbps (Qualitaet 7)"),
+    "4": (["-c:a", "libvorbis", "-q:a", "9"], "~320 kbps (Qualitaet 9, maximal)"),
 }
 
 TIME_RE = re.compile(r"^[0-9:.]+$")
@@ -338,6 +363,108 @@ def select_mp3_bitrate() -> tuple[list[str], str] | None:
             print("[FEHLER] Ungueltige Eingabe! Bitte nur eine Zahl eingeben.")
             pause()
             continue
+
+        print("Ungueltige Auswahl!")
+        pause()
+
+
+def select_bitrate(presets: dict, title: str, codec_args: list[str] | None = None
+                    ) -> tuple[list[str], str] | None:
+    """Generisches Bitraten-/Qualitaets-Auswahlmenu (fuer AAC, Opus, Vorbis
+    etc.). 'presets' hat dasselbe Format wie MP3_BITRATES. Ist 'codec_args'
+    gesetzt, wird zusaetzlich eine Option fuer eine benutzerdefinierte
+    Bitrate (in kbps) angeboten. Gibt None zurueck, wenn der Nutzer
+    zurueck moechte."""
+    custom_key = str(max(int(k) for k in presets) + 1)
+    while True:
+        header(title)
+        for key in sorted(presets, key=int):
+            _, label = presets[key]
+            print(f"  [{key}] {label}")
+        if codec_args is not None:
+            print(f"  [{custom_key}] Eigene Bitrate eingeben")
+        print("  [0] Zurueck")
+        print()
+        choice = ask("Deine Auswahl: ").strip()
+
+        if choice in presets:
+            return presets[choice]
+
+        if codec_args is not None and choice == custom_key:
+            print()
+            print("Empfohlene Werte: 96, 128, 160, 192, 224, 256, 320")
+            custom = ask("Bitrate in kbps eingeben: ").strip()
+            if custom.isdigit():
+                return (codec_args + ["-b:a", f"{custom}k"],
+                         f"{custom} kbps (benutzerdefiniert)")
+            print()
+            print("[FEHLER] Ungueltige Eingabe! Bitte nur eine Zahl eingeben.")
+            pause()
+            continue
+
+        if choice == "0":
+            return None
+
+        print("Ungueltige Auswahl!")
+        pause()
+
+
+def select_audio_format() -> tuple[str, list[str], str] | None:
+    """Zeigt das Zielformat-Menue fuer die Audio-Konvertierung an und
+    anschliessend (falls zutreffend) das passende Bitraten-/Qualitaetsmenue.
+    Gibt (Dateiendung, ffmpeg-Codec-Parameter, Info-Text) zurueck, oder
+    None, wenn der Nutzer zurueck zum Hauptmenue moechte."""
+    while True:
+        header("Audio konvertieren - Zielformat waehlen")
+        print("  [1] MP3         (verlustbehaftet, universell kompatibel)")
+        print("  [2] AAC / M4A   (verlustbehaftet, gut fuer Apple-Geraete)")
+        print("  [3] Opus        (verlustbehaftet, beste Qualitaet pro kbps)")
+        print("  [4] Vorbis/OGG  (verlustbehaftet, freies Format)")
+        print("  [5] FLAC        (verlustfrei, komprimiert)")
+        print("  [6] WAV         (verlustfrei, unkomprimiert)")
+        print("  [0] Zurueck zum Hauptmenue")
+        print()
+        choice = ask("Zielformat waehlen: ").strip()
+
+        if choice == "1":
+            picked = select_bitrate(MP3_BITRATES, "MP3-Bitrate auswaehlen")
+            if picked is None:
+                continue
+            params, info = picked
+            return "mp3", params, info
+
+        if choice == "2":
+            picked = select_bitrate(AAC_BITRATES, "AAC-Bitrate auswaehlen",
+                                     codec_args=["-c:a", "aac"])
+            if picked is None:
+                continue
+            params, info = picked
+            return "m4a", params, info
+
+        if choice == "3":
+            picked = select_bitrate(OPUS_BITRATES, "Opus-Bitrate auswaehlen",
+                                     codec_args=["-c:a", "libopus"])
+            if picked is None:
+                continue
+            params, info = picked
+            return "opus", params, info
+
+        if choice == "4":
+            picked = select_bitrate(VORBIS_BITRATES, "Vorbis-Qualitaet auswaehlen",
+                                     codec_args=["-c:a", "libvorbis"])
+            if picked is None:
+                continue
+            params, info = picked
+            return "ogg", params, info
+
+        if choice == "5":
+            return "flac", ["-c:a", "flac"], "FLAC (verlustfrei, komprimiert)"
+
+        if choice == "6":
+            return "wav", ["-c:a", "pcm_s16le"], "WAV PCM 16-bit (verlustfrei)"
+
+        if choice == "0":
+            return None
 
         print("Ungueltige Auswahl!")
         pause()
@@ -974,31 +1101,31 @@ def rotate_reencode(path: Path, dir_: Path, basename: str, suffix: str, rotation
 
 
 # ---------------------------------------------------------------------------
-# 6) AUDIO IN MP3 KONVERTIEREN
+# 6) AUDIO KONVERTIEREN
 # ---------------------------------------------------------------------------
 
 def menu_convert() -> None:
-    header("Audio in MP3 konvertieren")
+    header("Audio konvertieren")
     path = get_input_file()
     if path is None:
         pause()
         return
     dir_, basename, _ext = get_file_info(path)
 
-    bitrate = select_mp3_bitrate()
-    if bitrate is None:
-        return
-    mp3_params, mp3_info = bitrate
+    result = select_audio_format()
+    if result is None:
+        return  # Nutzer hat [0] gewaehlt -> zurueck zum Hauptmenue
+    target_ext, codec_params, format_info = result
 
-    output = ask_custom_output(dir_ / f"{basename}_converted.mp3")
+    output = ask_custom_output(dir_ / f"{basename}_converted.{target_ext}")
     if not check_overwrite(output):
         print("Abgebrochen.")
         pause()
         return
 
     print()
-    print(f"Konvertierung laeuft ({mp3_info})...")
-    rc = run_ffmpeg(["-i", str(path), *mp3_params, "-vn", str(output)])
+    print(f"Konvertierung laeuft ({format_info})...")
+    rc = run_ffmpeg(["-i", str(path), *codec_params, "-vn", str(output)])
     print()
     report_result(rc, "Bei der Konvertierung ist ein Fehler aufgetreten",
                   f"Fertig! Datei gespeichert als: {output}")
@@ -1017,7 +1144,7 @@ def main_menu() -> None:
         print("  [3] Audio / Video trennen  (exportieren, verlustfrei)")
         print("  [4] Audio + Video muxen    (zusammenfuegen)")
         print("  [5] Video rotieren")
-        print("  [6] Audio in MP3 konvertieren")
+        print("  [6] Audio konvertieren     (MP3, AAC, Opus, Vorbis, FLAC, WAV)")
         print("  [0] Beenden")
         print()
         if _dropped_file:
